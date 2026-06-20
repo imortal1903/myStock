@@ -1,0 +1,309 @@
+Index: lib/core/database/db.dart
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/lib/core/database/db.dart b/lib/core/database/db.dart
+--- a/lib/core/database/db.dart
++++ b/lib/core/database/db.dart	(date 1779663873163)
+@@ -36,189 +36,131 @@
+       path,
+       options: OpenDatabaseOptions(
+         version: 1,
++        // PRAGMA deve ficar em onOpen — é executado a cada abertura do banco
++        onOpen: (db) async => await db.execute('PRAGMA foreign_keys = ON'),
+         onCreate: _onCreate,
+       ),
+     );
+   }
+ 
++  // sqflite não suporta múltiplos statements por execute().
++  // Usamos batch para rodar cada DDL individualmente numa única transação.
+   Future<void> _onCreate(Database db, int version) async {
+-    await db.execute('''
+-      PRAGMA foreign_keys = ON;
++    final b = db.batch();
+ 
+-      -- =========================================
+-      -- CATEGORIAS
+-      -- =========================================
+-      
++    // ── Categorias ────────────────────────────────────────────────────────────
++    b.execute('''
+       CREATE TABLE categorias (
+-          id INTEGER PRIMARY KEY AUTOINCREMENT,
+-          nome TEXT NOT NULL,
+-          criado_em DATETIME DEFAULT CURRENT_TIMESTAMP
+-      );
+-      
+-      -- =========================================
+-      -- PRODUTOS
+-      -- =========================================
+-      
++        id        INTEGER PRIMARY KEY AUTOINCREMENT,
++        nome      TEXT    NOT NULL,
++        criado_em TEXT    NOT NULL DEFAULT (datetime('now'))
++      )
++    ''');
++
++    // ── Produtos ──────────────────────────────────────────────────────────────
++    b.execute('''
+       CREATE TABLE produtos (
+-          id INTEGER PRIMARY KEY AUTOINCREMENT,
+-          nome TEXT NOT NULL,
+-          descricao TEXT,
+-          codigo_barras TEXT,
+-          categoria_id INTEGER,
+-          ativo INTEGER DEFAULT 1,
+-          criado_em DATETIME DEFAULT CURRENT_TIMESTAMP,
+-          unidade TEXT NOT NULL,
+-      
+-          FOREIGN KEY (categoria_id)
+-          REFERENCES categorias(id)
+-      );
+-      
+-      -- =========================================
+-      -- LOTES DOS PRODUTOS
+-      -- =========================================
+-      
++        id            INTEGER PRIMARY KEY AUTOINCREMENT,
++        nome          TEXT    NOT NULL,
++        descricao     TEXT,
++        codigo_barras TEXT,
++        categoria_id  INTEGER,
++        ativo         INTEGER NOT NULL DEFAULT 1,
++        criado_em     TEXT    NOT NULL DEFAULT (datetime('now')),
++        unidade       TEXT    NOT NULL,
++        FOREIGN KEY (categoria_id) REFERENCES categorias(id)
++      )
++    ''');
++
++    // ── Lotes dos Produtos ────────────────────────────────────────────────────
++    b.execute('''
+       CREATE TABLE lotes_produto (
+-          id INTEGER PRIMARY KEY AUTOINCREMENT,
+-          produto_id INTEGER NOT NULL,
+-          numero_lote TEXT,
+-          quantidade INTEGER NOT NULL CHECK (quantidade >= 0),
+-          preco_custo REAL,
+-          data_fabricacao DATE,
+-          data_validade DATE NOT NULL,
+-          data_entrada DATE NOT NULL,
+-          
+-          status TEXT NOT NULL DEFAULT 'ATIVO'
+-          CHECK (
+-              status IN (
+-                  'ATIVO',
+-                  'VENCIDO',
+-                  'ESGOTADO'
+-              )
+-          ),
+-          
+-          criado_em DATETIME DEFAULT CURRENT_TIMESTAMP,
+-      
+-          FOREIGN KEY (produto_id)
+-          REFERENCES produtos(id)
+-      );
+-      
+-      -- =========================================
+-      -- MOVIMENTAÇÕES DE ESTOQUE
+-      -- =========================================
+-      
++        id              INTEGER PRIMARY KEY AUTOINCREMENT,
++        produto_id      INTEGER NOT NULL,
++        numero_lote     TEXT,
++        quantidade      INTEGER NOT NULL CHECK (quantidade >= 0),
++        preco_custo     REAL,
++        data_fabricacao TEXT,
++        data_validade   TEXT    NOT NULL,
++        data_entrada    TEXT    NOT NULL,
++        status          TEXT    NOT NULL DEFAULT 'ATIVO'
++                        CHECK (status IN ('ATIVO','VENCIDO','ESGOTADO')),
++        criado_em       TEXT    NOT NULL DEFAULT (datetime('now')),
++        FOREIGN KEY (produto_id) REFERENCES produtos(id)
++      )
++    ''');
++
++    // ── Movimentações de Estoque ──────────────────────────────────────────────
++    b.execute('''
+       CREATE TABLE movimentacoes_estoque (
+-          id INTEGER PRIMARY KEY AUTOINCREMENT,
+-          lote_id INTEGER NOT NULL,
+-          
+-          tipo TEXT NOT NULL
+-          CHECK (
+-              tipo IN (
+-                  'ENTRADA',
+-                  'SAIDA',
+-                  'AJUSTE',
+-                  'PERDA'
+-              )
+-          ),
+-          
+-          quantidade INTEGER NOT NULL CHECK (quantidade >= 0),
+-          observacao TEXT,
+-          criado_em DATETIME DEFAULT CURRENT_TIMESTAMP,
+-      
+-          FOREIGN KEY (lote_id)
+-          REFERENCES lotes_produto(id)
+-      );
+-      
+-      -- =========================================
+-      -- VENDAS
+-      -- =========================================
+-      
++        id         INTEGER PRIMARY KEY AUTOINCREMENT,
++        lote_id    INTEGER NOT NULL,
++        tipo       TEXT    NOT NULL
++                   CHECK (tipo IN ('ENTRADA','SAIDA','AJUSTE','PERDA')),
++        quantidade INTEGER NOT NULL CHECK (quantidade >= 0),
++        observacao TEXT,
++        criado_em  TEXT    NOT NULL DEFAULT (datetime('now')),
++        FOREIGN KEY (lote_id) REFERENCES lotes_produto(id)
++      )
++    ''');
++
++    // ── Vendas ────────────────────────────────────────────────────────────────
++    b.execute('''
+       CREATE TABLE vendas (
+-          id INTEGER PRIMARY KEY AUTOINCREMENT,
+-          valor_total REAL NOT NULL,
+-          criado_em DATETIME DEFAULT CURRENT_TIMESTAMP
+-      );
+-      
+-      -- =========================================
+-      -- ITENS DA VENDA
+-      -- =========================================
+-      
++        id          INTEGER PRIMARY KEY AUTOINCREMENT,
++        valor_total REAL    NOT NULL,
++        criado_em   TEXT    NOT NULL DEFAULT (datetime('now'))
++      )
++    ''');
++
++    // ── Itens da Venda ────────────────────────────────────────────────────────
++    b.execute('''
+       CREATE TABLE venda_itens (
+-          id INTEGER PRIMARY KEY AUTOINCREMENT,
+-          venda_id INTEGER NOT NULL,
+-          produto_id INTEGER NOT NULL,
+-          lote_id INTEGER NOT NULL,
+-          quantidade INTEGER NOT NULL CHECK (quantidade >= 0),
+-          preco_unitario REAL NOT NULL,
+-          subtotal REAL NOT NULL,
+-      
+-          FOREIGN KEY (venda_id)
+-          REFERENCES vendas(id),
+-      
+-          FOREIGN KEY (produto_id)
+-          REFERENCES produtos(id),
+-      
+-          FOREIGN KEY (lote_id)
+-          REFERENCES lotes_produto(id)
+-      );
+-      
+-      -- =========================================
+-      -- FAVORITOS
+-      -- =========================================
+-      
++        id             INTEGER PRIMARY KEY AUTOINCREMENT,
++        venda_id       INTEGER NOT NULL,
++        produto_id     INTEGER NOT NULL,
++        lote_id        INTEGER NOT NULL,
++        quantidade     INTEGER NOT NULL CHECK (quantidade >= 0),
++        preco_unitario REAL    NOT NULL,
++        subtotal       REAL    NOT NULL,
++        FOREIGN KEY (venda_id)   REFERENCES vendas(id),
++        FOREIGN KEY (produto_id) REFERENCES produtos(id),
++        FOREIGN KEY (lote_id)    REFERENCES lotes_produto(id)
++      )
++    ''');
++
++    // ── Favoritos ─────────────────────────────────────────────────────────────
++    b.execute('''
+       CREATE TABLE produtos_favoritos (
+-          produto_id INTEGER PRIMARY KEY,
+-          criado_em DATETIME DEFAULT CURRENT_TIMESTAMP,
+-          FOREIGN KEY (produto_id)
+-          REFERENCES produtos(id)
+-      );
+-      
+-      -- =========================================
+-      -- NOTIFICAÇÕES
+-      -- =========================================
+-      
++        produto_id INTEGER PRIMARY KEY,
++        criado_em  TEXT NOT NULL DEFAULT (datetime('now')),
++        FOREIGN KEY (produto_id) REFERENCES produtos(id)
++      )
++    ''');
++
++    // ── Notificações ──────────────────────────────────────────────────────────
++    b.execute('''
+       CREATE TABLE notificacoes (
+-          id INTEGER PRIMARY KEY AUTOINCREMENT,
+-          
+-          tipo TEXT NOT NULL
+-          CHECK (
+-              tipo IN (
+-                  'VALIDADE_PROXIMA',
+-                  'PRODUTO_VENCIDO',
+-                  'ESTOQUE_BAIXO'
+-              )
+-          ),
+-      
+-          produto_id INTEGER,
+-          lote_id INTEGER,
+-          mensagem TEXT NOT NULL,
+-          visualizada INTEGER DEFAULT 0,
+-          criado_em DATETIME DEFAULT CURRENT_TIMESTAMP,
+-      
+-          FOREIGN KEY (produto_id)
+-          REFERENCES produtos(id),
+-      
+-          FOREIGN KEY (lote_id)
+-          REFERENCES lotes_produto(id)
+-      );
+-      
+-      -- =========================================
+-      -- ÍNDICES
+-      -- =========================================
+-      
+-      CREATE INDEX idx_produto_nome
+-      ON produtos(nome);
+-      
+-      CREATE INDEX idx_lote_produto
+-      ON lotes_produto(produto_id);
+-      
+-      CREATE INDEX idx_lote_validade
+-      ON lotes_produto(data_validade);
+-      
+-      CREATE INDEX idx_vendas_data
+-      ON vendas(criado_em);
+-      
+-      CREATE INDEX idx_notificacoes_visualizada
+-      ON notificacoes(visualizada);
++        id          INTEGER PRIMARY KEY AUTOINCREMENT,
++        tipo        TEXT    NOT NULL
++                    CHECK (tipo IN ('VALIDADE_PROXIMA','PRODUTO_VENCIDO','ESTOQUE_BAIXO')),
++        produto_id  INTEGER,
++        lote_id     INTEGER,
++        mensagem    TEXT    NOT NULL,
++        visualizada INTEGER NOT NULL DEFAULT 0,
++        criado_em   TEXT    NOT NULL DEFAULT (datetime('now')),
++        FOREIGN KEY (produto_id) REFERENCES produtos(id),
++        FOREIGN KEY (lote_id)    REFERENCES lotes_produto(id)
++      )
+     ''');
++
++    // ── Índices ───────────────────────────────────────────────────────────────
++    b.execute('CREATE INDEX idx_produto_nome      ON produtos(nome)');
++    b.execute('CREATE INDEX idx_lote_produto      ON lotes_produto(produto_id)');
++    b.execute('CREATE INDEX idx_lote_validade     ON lotes_produto(data_validade)');
++    b.execute('CREATE INDEX idx_vendas_data       ON vendas(criado_em)');
++    b.execute('CREATE INDEX idx_notif_visualizada ON notificacoes(visualizada)');
++
++    await b.commit(noResult: true);
+   }
+ }
+\ No newline at end of file
