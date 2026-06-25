@@ -165,7 +165,7 @@ O banco local utiliza **SQLite** via `sqflite`, compatível com Android.
 
 ```bash
 # Clone o repositório
-git clone https://github.com/imortal1903/mystock.git
+git clone https://github.com/imortal1903/myStock.git
 cd mystock
 
 # Instale as dependências
