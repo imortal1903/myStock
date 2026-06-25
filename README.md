@@ -7,7 +7,6 @@
 ![Flutter](https://img.shields.io/badge/Flutter-3.x-02569B?logo=flutter)
 ![Dart](https://img.shields.io/badge/Dart-3.x-0175C2?logo=dart)
 ![SQLite](https://img.shields.io/badge/SQLite-Local-003B57?logo=sqlite)
-![License](https://img.shields.io/badge/Licença-MIT-green)
 ![Status](https://img.shields.io/badge/Status-Em%20desenvolvimento-yellow)
 
 </div>
