@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
-import '../features/crud/viewmodels/home_viewmodel.dart';
-import '../features/crud/views/home_page.dart';
+import 'features/crud/viewmodels/home_viewmodel.dart';
+import 'features/crud/views/home_page.dart';
 
 main(){
   runApp(const MyStockApp());

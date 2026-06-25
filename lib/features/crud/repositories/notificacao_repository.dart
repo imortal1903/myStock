@@ -1,3 +1,4 @@
+import 'package:sqflite/sqflite.dart';
 import '../../../core/database/db.dart';
 import '../models/notificacao.dart';
 import '../../../core/notifications/notification_config.dart';

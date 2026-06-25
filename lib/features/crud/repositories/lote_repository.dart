@@ -1,3 +1,4 @@
+import 'package:sqflite/sqflite.dart';
 import '../../../core/database/db.dart';
 import '../models/lote.dart';
 import '../../../core/extensions/sqldate_extension.dart';

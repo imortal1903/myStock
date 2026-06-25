@@ -1,7 +1,7 @@
 import 'package:flutter/foundation.dart';
 import '../../features/crud/models/notificacao.dart';
 import '../../features/crud/repositories/lote_repository.dart';
-import '../../features/crud/repositories/notification_repository.dart';
+import '../../features/crud/repositories/notificacao_repository.dart';
 import '../../features/crud/repositories/produto_repository.dart';
 import '../notifications/notification_service.dart';
 

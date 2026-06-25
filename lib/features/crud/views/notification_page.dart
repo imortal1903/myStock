@@ -3,7 +3,7 @@ import 'package:provider/provider.dart';
 import '../../../core/theme/app_colors.dart';
 
 import '../../../core/notifications/notification_config.dart';
-import '../repositories/notification_repository.dart';
+import '../repositories/notificacao_repository.dart';
 import '../viewmodels/notification_viewmodel.dart';
 
 // ─── Notification Page ────────────────────────────────────────────────────────

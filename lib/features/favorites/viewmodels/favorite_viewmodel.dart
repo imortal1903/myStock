@@ -7,27 +7,27 @@ import '../../crud/models/produto.dart';
 class FavoriteViewModel extends ChangeNotifier {
   // ── State ──────────────────────────────────────────────────────────────────
 
-  final List<Produto> _favoritos = [];
+  final Map<int, Produto> _favoritos = {};
   final bool _isLoading = false;
 
   // ── Getters ────────────────────────────────────────────────────────────────
 
-  List<Produto> get favoritos  => List.unmodifiable(_favoritos);
+  // Retorna uma lista imutável para maior segurança
+  List<Produto> get favoritos => List.unmodifiable(_favoritos.values);
   bool          get isLoading  => _isLoading;
   bool          get isEmpty    => _favoritos.isEmpty;
 
+  bool isFavorite(int id) => _favoritos.containsKey(id);
+
   // ── Actions ────────────────────────────────────────────────────────────────
 
-  /// Adiciona ou remove um produto dos favoritos.
   void toggle(Produto produto) {
-    final existe = _favoritos.any((p) => p.id == produto.id);
-    if (existe) {
-      _favoritos.removeWhere((p) => p.id == produto.id);
-    } else {
-      _favoritos.add(produto);
+    final id = produto.id;
+    if (id == null) return;
+
+    if (_favoritos.remove(id) == null) {
+      _favoritos[id] = produto;
     }
     notifyListeners();
   }
-
-  bool isFavorito(String id) => _favoritos.any((p) => p.id == id);
 }

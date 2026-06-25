@@ -1,12 +1,8 @@
 import 'dart:io';
 
-import 'package:flutter/foundation.dart';
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
-import 'package:sqflite_common_ffi/sqflite_ffi.dart';
-
-export 'package:sqflite_common_ffi/sqflite_ffi.dart'
-    show Database, ConflictAlgorithm;
+import 'package:sqflite/sqflite.dart';
 
 class DatabaseHelper {
   static final DatabaseHelper instance = DatabaseHelper._internal();
@@ -20,25 +16,17 @@ class DatabaseHelper {
   }
 
   Future<Database> _initDB() async {
-    if (!kIsWeb &&
-        (Platform.isWindows || Platform.isLinux || Platform.isMacOS)) {
-      sqfliteFfiInit();
-    }
-    databaseFactory = databaseFactoryFfi;
-
     final dir = await getApplicationDocumentsDirectory();
     final dbDir = Directory(p.join(dir.path, 'estoque'));
     if (!dbDir.existsSync()) dbDir.createSync(recursive: true);
 
     final path = p.join(dbDir.path, 'estoque.db');
 
-    return databaseFactory.openDatabase(
+    return openDatabase(          // ← sqflite nativo, sem databaseFactory
       path,
-      options: OpenDatabaseOptions(
-        version: 1,
-        onOpen: (db) async => await db.execute('PRAGMA foreign_keys = ON'),
-        onCreate: _onCreate,
-      ),
+      version: 1,
+      onOpen: (db) async => await db.execute('PRAGMA foreign_keys = ON'),
+      onCreate: _onCreate,
     );
   }
 

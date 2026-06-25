@@ -1,5 +1,3 @@
-import 'dart:io';
-
 import 'package:flutter/foundation.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 
@@ -7,7 +5,7 @@ import '../../../core/notifications/notification_config.dart';
 import '../../../core/notifications/notification_service.dart';
 
 import '../repositories/lote_repository.dart';
-import '../repositories/notification_repository.dart';
+import '../repositories/notificacao_repository.dart';
 import '../repositories/produto_repository.dart';
 
 enum NotifSaveStatus { idle, saving, saved, error }
@@ -92,24 +90,22 @@ class NotificationViewModel extends ChangeNotifier {
   Future<bool> _requestAllPermissions() async {
     await NotificationService.instance.requestPermission();
 
-    if (!kIsWeb && Platform.isAndroid) {
-      final android = FlutterLocalNotificationsPlugin()
+    final android = FlutterLocalNotificationsPlugin()
           .resolvePlatformSpecificImplementation<
           AndroidFlutterLocalNotificationsPlugin>();
 
-      if (android != null) {
-        final canSchedule =
+    if (android != null) {
+      final canSchedule =
+      await android.canScheduleExactNotifications();
+
+      if (canSchedule == false) {
+        await android.requestExactAlarmsPermission();
+
+        final granted =
         await android.canScheduleExactNotifications();
 
-        if (canSchedule == false) {
-          await android.requestExactAlarmsPermission();
-
-          final granted =
-          await android.canScheduleExactNotifications();
-
-          if (granted == false) {
-            return false;
-          }
+        if (granted == false) {
+          return false;
         }
       }
     }
