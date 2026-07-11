@@ -30,7 +30,7 @@ class _UpdateView extends StatelessWidget {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (!context.mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-          content: Text('Salvo com sucesso!'),
+          content: const Text('Salvo com sucesso!'),
           backgroundColor: context.colors.primary,
         ));
         context.read<UpdateViewModel>().resetStatus();

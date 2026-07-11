@@ -7,28 +7,42 @@ import 'features/crud/views/home_page.dart';
 import 'features/settings/repositories/settings_repository.dart';
 import 'features/settings/viewmodels/settings_viewmodel.dart';
 
-main(){
-  runApp(const MyStockApp());
+Future<void> main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  final settingsRepository = SettingsRepository();
+  final settingsIniciais = await settingsRepository.carregar();
+
+  runApp(MyStockApp(
+    settingsRepository: settingsRepository,
+    themeModeInicial: settingsIniciais.themeMode,
+  ));
 }
 
 class MyStockApp extends StatelessWidget {
-  const MyStockApp({super.key});
+  final SettingsRepository settingsRepository;
+  final ThemeMode themeModeInicial;
+
+  const MyStockApp({
+    super.key,
+    required this.settingsRepository,
+    required this.themeModeInicial,
+  });
 
   @override
   Widget build(BuildContext context) {
     return MultiProvider(
       providers: [
         ChangeNotifierProvider(create: (_) => HomeViewModel()),
-        ChangeNotifierProvider(create: (_) => ThemeController()),
+        ChangeNotifierProvider(create: (_) => ThemeController(themeModeInicial)),
         ChangeNotifierProxyProvider<ThemeController, SettingsViewModel>(
           create: (ctx) => SettingsViewModel(
-            repository: SettingsRepository(),
+            repository: settingsRepository,
             themeController: ctx.read<ThemeController>(),
           ),
           update: (ctx, themeController, previous) =>
           previous ??
               SettingsViewModel(
-                repository: SettingsRepository(),
+                repository: settingsRepository,
                 themeController: themeController,
               ),
         ),

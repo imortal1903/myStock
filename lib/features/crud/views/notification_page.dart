@@ -37,7 +37,7 @@ class _NotificationView extends StatelessWidget {
         if (!context.mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Configurações salvas e notificações agendadas!'),
+            content: const Text('Configurações salvas e notificações agendadas!'),
             backgroundColor: context.colors.success,
           ),
         );
@@ -114,7 +114,7 @@ class _NotificationBody extends StatelessWidget {
                               color: context.colors.textPrimary,
                               fontSize: 15,
                               fontWeight: FontWeight.w600)),
-                      SizedBox(height: 2),
+                      const SizedBox(height: 2),
                       Text('Receber alertas de vencimento',
                           style: TextStyle(
                               color: context.colors.textMuted, fontSize: 12)),
@@ -317,7 +317,7 @@ class _Header extends StatelessWidget {
                   color: context.colors.textPrimary,
                   fontSize: 18,
                   fontWeight: FontWeight.w700)),
-          SizedBox(height: 4),
+          const SizedBox(height: 4),
           Text('Receba avisos antes que seus produtos vençam.',
               style: TextStyle(color: context.colors.textMuted, fontSize: 13)),
         ]),
@@ -452,7 +452,7 @@ class _PreviewCard extends StatelessWidget {
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Row(children: [
           Icon(Icons.preview_outlined, color: context.colors.accent, size: 16),
-          SizedBox(width: 8),
+          const SizedBox(width: 8),
           Text('Como vai funcionar',
               style: TextStyle(
                   color: context.colors.accent,

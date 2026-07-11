@@ -88,8 +88,8 @@ class _ProductList extends StatelessWidget {
           border: Border.all(color: Colors.redAccent.withValues(alpha: 0.4)),
         ),
         child: Row(children: [
-          Icon(Icons.warning_amber_rounded, color: Colors.redAccent, size: 20),
-          SizedBox(width: 10),
+          const Icon(Icons.warning_amber_rounded, color: Colors.redAccent, size: 20),
+          const SizedBox(width: 10),
           Expanded(child: Text('Você pode remover o produto inteiro ou lotes específicos.',
               style: TextStyle(color: context.colors.textSecondary, fontSize: 12))),
         ]),

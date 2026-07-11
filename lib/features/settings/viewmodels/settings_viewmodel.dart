@@ -42,18 +42,6 @@ class SettingsViewModel extends ChangeNotifier {
     await _repository.salvarThemeMode(mode);
   }
 
-  Future<void> definirDiasAntecedencia(int dias) async {
-    _settings = _settings.copyWith(notificacaoDiasAntecedencia: dias);
-    notifyListeners();
-    await _repository.salvarDiasAntecedencia(dias);
-  }
-
-  Future<void> definirFrequenciaRepeticao(int dias) async {
-    _settings = _settings.copyWith(notificacaoFrequenciaRepeticao: dias);
-    notifyListeners();
-    await _repository.salvarFrequenciaRepeticao(dias);
-  }
-
   Future<void> restaurarPadroes() async {
     await _repository.restaurarPadroes();
     _settings = const AppSettings();
