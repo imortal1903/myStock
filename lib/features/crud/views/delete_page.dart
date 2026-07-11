@@ -30,18 +30,18 @@ class _DeleteView extends StatelessWidget {
         if (!context.mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(
           content: Text('"${vm.lastDeletedNome}" removido.'),
-          backgroundColor: AppColors.primary,
+          backgroundColor: context.colors.primary,
         ));
         context.read<DeleteViewModel>().resetStatus();
       });
     }
 
     return Scaffold(
-      backgroundColor: AppColors.bg,
+      backgroundColor: context.colors.bg,
       appBar: AppBar(
-        backgroundColor: AppColors.surface, elevation: 0,
+        backgroundColor: context.colors.surface, elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_new, color: Colors.white70, size: 18),
+          icon: Icon(Icons.arrow_back_ios_new, color: context.colors.textSecondary, size: 18),
           onPressed: () {
             if (vm.selectedProduto != null) {
               context.read<DeleteViewModel>().clearSelection();
@@ -52,7 +52,7 @@ class _DeleteView extends StatelessWidget {
         ),
         title: Text(
           vm.selectedProduto == null ? 'Remover Produto' : vm.selectedProduto!.nome,
-          style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w600),
+          style: TextStyle(color: context.colors.textPrimary, fontSize: 16, fontWeight: FontWeight.w600),
         ),
         centerTitle: true,
       ),
@@ -72,10 +72,10 @@ class _ProductList extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (vm.isLoading && vm.produtos.isEmpty) {
-      return const Center(child: CircularProgressIndicator(color: AppColors.accent));
+      return Center(child: CircularProgressIndicator(color: context.colors.accent));
     }
     if (vm.produtos.isEmpty) {
-      return const Center(child: Text('Nenhum produto.', style: TextStyle(color: Colors.white54)));
+      return Center(child: Text('Nenhum produto.', style: TextStyle(color: context.colors.textMuted)));
     }
     return Column(children: [
       // Banner de aviso
@@ -87,11 +87,11 @@ class _ProductList extends StatelessWidget {
           borderRadius: BorderRadius.circular(12),
           border: Border.all(color: Colors.redAccent.withValues(alpha: 0.4)),
         ),
-        child: const Row(children: [
+        child: Row(children: [
           Icon(Icons.warning_amber_rounded, color: Colors.redAccent, size: 20),
           SizedBox(width: 10),
           Expanded(child: Text('Você pode remover o produto inteiro ou lotes específicos.',
-              style: TextStyle(color: Colors.white70, fontSize: 12))),
+              style: TextStyle(color: context.colors.textSecondary, fontSize: 12))),
         ]),
       ),
       Expanded(
@@ -117,26 +117,26 @@ class _ProductList extends StatelessWidget {
     final ok = await showDialog<bool>(
       context: ctx,
       builder: (_) => AlertDialog(
-        backgroundColor: AppColors.surface,
+        backgroundColor: ctx.colors.surface,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: const Text('Remover produto', style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w600)),
+        title: Text('Remover produto', style: TextStyle(color: ctx.colors.textPrimary, fontSize: 16, fontWeight: FontWeight.w600)),
         content: RichText(text: TextSpan(
-          style: const TextStyle(color: Colors.white60, fontSize: 14, height: 1.5),
+          style: TextStyle(color: ctx.colors.textSecondary, fontSize: 14, height: 1.5),
           children: [
             const TextSpan(text: 'Isso removerá '),
-            TextSpan(text: '"${p.nome}"', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600)),
+            TextSpan(text: '"${p.nome}"', style: TextStyle(color: ctx.colors.textPrimary, fontWeight: FontWeight.w600)),
             const TextSpan(text: ' e todos os seus lotes permanentemente.'),
           ],
         )),
         actions: [
           TextButton(onPressed: () => Navigator.pop(ctx, false),
-              child: const Text('Cancelar', style: TextStyle(color: Colors.white54))),
+              child: Text('Cancelar', style: TextStyle(color: ctx.colors.textMuted))),
           ElevatedButton(
             onPressed: () => Navigator.pop(ctx, true),
             style: ElevatedButton.styleFrom(
                 backgroundColor: Colors.redAccent,
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)), elevation: 0),
-            child: const Text('Remover tudo', style: TextStyle(color: Colors.white)),
+            child: Text('Remover tudo', style: TextStyle(color: ctx.colors.textPrimary)),
           ),
         ],
       ),
@@ -155,24 +155,24 @@ class _ProductTile extends StatelessWidget {
   Widget build(BuildContext context) => Container(
     padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
     decoration: BoxDecoration(
-        color: AppColors.surface,
+        color: context.colors.surface,
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: Colors.white10)),
+        border: Border.all(color: context.colors.divider)),
     child: Row(children: [
       Container(width: 42, height: 42,
-          decoration: BoxDecoration(color: AppColors.primary, borderRadius: BorderRadius.circular(10)),
-          child: const Icon(Icons.inventory_2_outlined, color: Colors.white, size: 20)),
+          decoration: BoxDecoration(color: context.colors.primary, borderRadius: BorderRadius.circular(10)),
+          child: Icon(Icons.inventory_2_outlined, color: context.colors.onPrimary, size: 20)),
       const SizedBox(width: 14),
       Expanded(child: GestureDetector(
         onTap: onTapEdit,
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Text(produto.nome, style: const TextStyle(color: Colors.white, fontSize: 15, fontWeight: FontWeight.w600)),
-          Text(produto.unidade, style: const TextStyle(color: AppColors.accent, fontSize: 12)),
+          Text(produto.nome, style: TextStyle(color: context.colors.textPrimary, fontSize: 15, fontWeight: FontWeight.w600)),
+          Text(produto.unidade, style: TextStyle(color: context.colors.accent, fontSize: 12)),
         ]),
       )),
       // Ver lotes
       IconButton(
-        icon: const Icon(Icons.layers_outlined, color: Colors.white54, size: 20),
+        icon: Icon(Icons.layers_outlined, color: context.colors.textMuted, size: 20),
         onPressed: onTapEdit,
         tooltip: 'Ver lotes',
       ),
@@ -198,8 +198,8 @@ class _ProdutoDetail extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (vm.lotes.isEmpty) {
-      return const Center(child: Text('Nenhum lote cadastrado.',
-          style: TextStyle(color: Colors.white54)));
+      return Center(child: Text('Nenhum lote cadastrado.',
+          style: TextStyle(color: context.colors.textMuted)));
     }
     return ListView.separated(
       padding: const EdgeInsets.all(16),
@@ -218,20 +218,20 @@ class _ProdutoDetail extends StatelessWidget {
     final ok = await showDialog<bool>(
       context: ctx,
       builder: (_) => AlertDialog(
-        backgroundColor: AppColors.surface,
+        backgroundColor: ctx.colors.surface,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: const Text('Remover lote', style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w600)),
+        title: Text('Remover lote', style: TextStyle(color: ctx.colors.textPrimary, fontSize: 16, fontWeight: FontWeight.w600)),
         content: Text('Remover "$label" permanentemente?',
-            style: const TextStyle(color: Colors.white60, fontSize: 14)),
+            style: TextStyle(color: ctx.colors.textSecondary, fontSize: 14)),
         actions: [
           TextButton(onPressed: () => Navigator.pop(ctx, false),
-              child: const Text('Cancelar', style: TextStyle(color: Colors.white54))),
+              child: Text('Cancelar', style: TextStyle(color: ctx.colors.textMuted))),
           ElevatedButton(
             onPressed: () => Navigator.pop(ctx, true),
             style: ElevatedButton.styleFrom(
                 backgroundColor: Colors.redAccent,
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)), elevation: 0),
-            child: const Text('Remover', style: TextStyle(color: Colors.white)),
+            child: Text('Remover', style: TextStyle(color: ctx.colors.textPrimary)),
           ),
         ],
       ),
@@ -247,31 +247,31 @@ class _LoteTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final cor = lote.estaVencido ? Colors.redAccent : AppColors.accent;
+    final cor = lote.estaVencido ? Colors.redAccent : context.colors.accent;
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
       decoration: BoxDecoration(
-          color: AppColors.surface,
+          color: context.colors.surface,
           borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: Colors.white10)),
+          border: Border.all(color: context.colors.divider)),
       child: Row(children: [
         Stack(clipBehavior: Clip.none, children: [
           Container(width: 46, height: 46,
-              decoration: BoxDecoration(color: AppColors.primary, borderRadius: BorderRadius.circular(12)),
-              child: const Icon(Icons.layers_outlined, color: Colors.white, size: 22)),
+              decoration: BoxDecoration(color: context.colors.primary, borderRadius: BorderRadius.circular(12)),
+              child: Icon(Icons.layers_outlined, color: context.colors.onPrimary, size: 22)),
           if (lote.estaVencido)
             Positioned(right: -4, top: -4,
                 child: Container(width: 14, height: 14,
                     decoration: const BoxDecoration(color: Colors.redAccent, shape: BoxShape.circle),
-                    child: const Icon(Icons.priority_high, color: Colors.white, size: 10))),
+                    child: Icon(Icons.priority_high, color: context.colors.onPrimary, size: 10))),
         ]),
         const SizedBox(width: 14),
         Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           Text(lote.numeroLote ?? 'Lote #${lote.id}',
-              style: const TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.w600)),
+              style: TextStyle(color: context.colors.textPrimary, fontSize: 14, fontWeight: FontWeight.w600)),
           const SizedBox(height: 2),
           Text('Qtd: ${lote.quantidade} · ${lote.precoCustoFormatado}',
-              style: const TextStyle(color: Colors.white60, fontSize: 12)),
+              style: TextStyle(color: context.colors.textSecondary, fontSize: 12)),
           Row(children: [
             Icon(lote.estaVencido ? Icons.cancel_outlined : Icons.check_circle_outline,
                 color: cor, size: 13),

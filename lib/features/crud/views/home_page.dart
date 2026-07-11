@@ -11,6 +11,7 @@ import '../../favorites/viewmodels/favorite_viewmodel.dart';
 import '../../sales/views/sale_page.dart';
 import '../../sales/viewmodels/sale_viewmodel.dart';
 import '../../../core/theme/app_colors.dart';
+import '../../settings/views/settings_page.dart';
 
 // ─── Shell global ─────────────────────────────────────────────────────────────
 
@@ -32,7 +33,7 @@ class _HomePageState extends State<HomePage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.bg,
+      backgroundColor: context.colors.bg,
       body: IndexedStack(
         index: _index,
         children: [
@@ -63,9 +64,9 @@ class _BottomNav extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       height: 70,
-      decoration: const BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      decoration: BoxDecoration(
+        color: context.colors.surface,
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
       ),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceAround,
@@ -78,15 +79,15 @@ class _BottomNav extends StatelessWidget {
               duration: const Duration(milliseconds: 200),
               padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
               decoration: BoxDecoration(
-                color: sel ? AppColors.accent.withValues(alpha: 0.15) : Colors.transparent,
+                color: sel ? context.colors.accent.withValues(alpha: 0.15) : Colors.transparent,
                 borderRadius: BorderRadius.circular(12),
               ),
               child: Column(mainAxisSize: MainAxisSize.min, children: [
-                Icon(_items[i].icon, color: sel ? AppColors.accent : Colors.white38, size: 24),
+                Icon(_items[i].icon, color: sel ? context.colors.accent : context.colors.textFaint, size: 24),
                 const SizedBox(height: 4),
                 Text(_items[i].label,
                     style: TextStyle(
-                        color: sel ? AppColors.accent : Colors.white38,
+                        color: sel ? context.colors.accent : context.colors.textFaint,
                         fontSize: 11,
                         fontWeight: sel ? FontWeight.w600 : FontWeight.w400)),
               ]),
@@ -111,8 +112,8 @@ class _CrudContent extends StatelessWidget {
         const _TopBar(),
         Expanded(
           child: RefreshIndicator(
-            color: AppColors.accent,
-            backgroundColor: AppColors.surface,
+            color: context.colors.accent,
+            backgroundColor: context.colors.surface,
             onRefresh: () => context.read<HomeViewModel>().refresh(),
             child: const SingleChildScrollView(
               physics: AlwaysScrollableScrollPhysics(parent: BouncingScrollPhysics()),
@@ -146,24 +147,28 @@ class _TopBar extends StatelessWidget {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       child: Row(children: [
-        Container(
-          width: 36, height: 36,
-          decoration: BoxDecoration(color: AppColors.primary, borderRadius: BorderRadius.circular(10)),
-          child: const Icon(Icons.cloud_outlined, color: Colors.white, size: 20),
+        GestureDetector(
+          onTap: () => Navigator.push(context,
+              MaterialPageRoute(builder: (_) => const SettingsPage())),
+          child: Container(
+            width: 36, height: 36,
+            decoration: BoxDecoration(color: context.colors.primary, borderRadius: BorderRadius.circular(10)),
+            child: Icon(Icons.settings_outlined, color: context.colors.onPrimary, size: 20),
+          ),
         ),
-        const Expanded(
+        Expanded(
           child: Center(child: Text('Estoque',
-              style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.w600, letterSpacing: 0.5))),
+              style: TextStyle(color: context.colors.textPrimary, fontSize: 18, fontWeight: FontWeight.w600, letterSpacing: 0.5))),
         ),
         Stack(children: [
           IconButton(
             onPressed: () => Navigator.push(context,
                 MaterialPageRoute(builder: (_) => const NotificationPage())),
-            icon: const Icon(Icons.notifications_outlined, color: Colors.white),
+            icon: Icon(Icons.notifications_outlined, color: context.colors.textPrimary),
           ),
           Positioned(right: 8, top: 8,
               child: Container(width: 8, height: 8,
-                  decoration: const BoxDecoration(color: AppColors.accent, shape: BoxShape.circle))),
+                  decoration: BoxDecoration(color: context.colors.accent, shape: BoxShape.circle))),
         ]),
       ]),
     );
@@ -189,17 +194,17 @@ class _SearchBarState extends State<_SearchBar> {
       Expanded(
         child: Container(
           height: 46,
-          decoration: BoxDecoration(color: AppColors.surface, borderRadius: BorderRadius.circular(12)),
+          decoration: BoxDecoration(color: context.colors.surface, borderRadius: BorderRadius.circular(12)),
           child: TextField(
             controller: _ctrl,
-            style: const TextStyle(color: Colors.white70, fontSize: 14),
+            style: TextStyle(color: context.colors.textSecondary, fontSize: 14),
             onChanged: context.read<HomeViewModel>().onSearchChanged,
-            decoration: const InputDecoration(
+            decoration: InputDecoration(
               hintText: 'Pesquisar produto...',
-              hintStyle: TextStyle(color: Colors.white38, fontSize: 14),
-              prefixIcon: Icon(Icons.search, color: Colors.white38, size: 20),
+              hintStyle: TextStyle(color: context.colors.textFaint, fontSize: 14),
+              prefixIcon: Icon(Icons.search, color: context.colors.textFaint, size: 20),
               border: InputBorder.none,
-              contentPadding: EdgeInsets.symmetric(vertical: 14),
+              contentPadding: const EdgeInsets.symmetric(vertical: 14),
             ),
           ),
         ),
@@ -207,10 +212,10 @@ class _SearchBarState extends State<_SearchBar> {
       const SizedBox(width: 12),
       GestureDetector(
         onTap: () { _ctrl.clear(); context.read<HomeViewModel>().onSearchChanged(''); },
-        child: const Row(children: [
-          Text('Limpar', style: TextStyle(color: AppColors.accent, fontSize: 14, fontWeight: FontWeight.w500)),
-          SizedBox(width: 4),
-          Icon(Icons.close, color: AppColors.accent, size: 18),
+        child: Row(children: [
+          Text('Limpar', style: TextStyle(color: context.colors.accent, fontSize: 14, fontWeight: FontWeight.w500)),
+          const SizedBox(width: 4),
+          Icon(Icons.close, color: context.colors.accent, size: 18),
         ]),
       ),
     ]);
@@ -256,11 +261,11 @@ class _ActionBtn extends StatelessWidget {
       onTap: onTap,
       child: Container(
         padding: const EdgeInsets.symmetric(vertical: 14),
-        decoration: BoxDecoration(color: AppColors.primary, borderRadius: BorderRadius.circular(14)),
+        decoration: BoxDecoration(color: context.colors.primary, borderRadius: BorderRadius.circular(14)),
         child: Column(mainAxisSize: MainAxisSize.min, children: [
-          Icon(icon, color: Colors.white, size: 24),
+          Icon(icon, color: context.colors.onPrimary, size: 24),
           const SizedBox(height: 6),
-          Text(label, style: const TextStyle(color: Colors.white70, fontSize: 12)),
+          Text(label, style: TextStyle(color: context.colors.onPrimarySecondary, fontSize: 12)),
         ]),
       ),
     ),
@@ -277,8 +282,8 @@ class _SectionHeader extends StatelessWidget {
   Widget build(BuildContext context) => Row(
     mainAxisAlignment: MainAxisAlignment.spaceBetween,
     children: [
-      Text(title, style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w600)),
-      Text(action, style: const TextStyle(color: AppColors.accent, fontSize: 13, fontWeight: FontWeight.w500)),
+      Text(title, style: TextStyle(color: context.colors.textPrimary, fontSize: 16, fontWeight: FontWeight.w600)),
+      Text(action, style: TextStyle(color: context.colors.accent, fontSize: 13, fontWeight: FontWeight.w500)),
     ],
   );
 }
@@ -293,9 +298,9 @@ class _ProductList extends StatelessWidget {
     final vm = context.watch<HomeViewModel>();
 
     if (vm.isLoading) {
-      return const Center(child: Padding(
-        padding: EdgeInsets.symmetric(vertical: 32),
-        child: CircularProgressIndicator(color: AppColors.accent),
+      return Center(child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 32),
+        child: CircularProgressIndicator(color: context.colors.accent),
       ));
     }
     if (vm.error != null) {
@@ -305,12 +310,12 @@ class _ProductList extends StatelessWidget {
       ));
     }
     if (vm.items.isEmpty) {
-      return const Center(child: Padding(
-        padding: EdgeInsets.symmetric(vertical: 32),
+      return Center(child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 32),
         child: Column(mainAxisSize: MainAxisSize.min, children: [
-          Icon(Icons.inventory_2_outlined, color: Colors.white12, size: 52),
-          SizedBox(height: 12),
-          Text('Nenhum produto encontrado.', style: TextStyle(color: Colors.white38, fontSize: 14)),
+          Icon(Icons.inventory_2_outlined, color: context.colors.divider, size: 52),
+          const SizedBox(height: 12),
+          Text('Nenhum produto encontrado.', style: TextStyle(color: context.colors.textFaint, fontSize: 14)),
         ]),
       ));
     }
@@ -331,7 +336,7 @@ class _ProductCard extends StatelessWidget {
     final vencendo  = item.temLoteVencendo;
     final badgeCor  = lote != null && lote.estaVencido
         ? Colors.redAccent
-        : vencendo ? Colors.orangeAccent : AppColors.accent;
+        : vencendo ? Colors.orangeAccent : context.colors.secondary;
     final badgeText = lote == null
         ? 'Sem lote ativo'
         : lote.estaVencido
@@ -341,28 +346,28 @@ class _ProductCard extends StatelessWidget {
     return Container(
       margin: const EdgeInsets.only(bottom: 14),
       padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(color: AppColors.primary, borderRadius: BorderRadius.circular(16)),
+      decoration: BoxDecoration(color: context.colors.primary, borderRadius: BorderRadius.circular(16)),
       child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Container(
           width: 90, height: 90,
           decoration: BoxDecoration(
-            color: AppColors.primaryDark, borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: AppColors.accent, width: 1.5),
+            color: context.colors.primaryDark, borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: context.colors.accent, width: 1.5),
           ),
           child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
-            const Icon(Icons.inventory_2_outlined, color: Colors.white, size: 28),
+            Icon(Icons.inventory_2_outlined, color: context.colors.onPrimary, size: 28),
             const SizedBox(height: 4),
-            Text(item.produto.unidade, style: const TextStyle(color: Colors.white60, fontSize: 11)),
+            Text(item.produto.unidade, style: TextStyle(color: context.colors.onPrimarySecondary, fontSize: 11)),
             const SizedBox(height: 2),
             Text('Qtd: ${item.estoqueTotal}',
-                style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w700)),
+                style: TextStyle(color: context.colors.onPrimary, fontSize: 12, fontWeight: FontWeight.w700)),
           ]),
         ),
         const SizedBox(width: 14),
         Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           Row(children: [
             Expanded(child: Text(item.produto.nome,
-                style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w700))),
+                style: TextStyle(color: context.colors.onPrimary, fontSize: 16, fontWeight: FontWeight.w700))),
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
               decoration: BoxDecoration(
@@ -376,16 +381,16 @@ class _ProductCard extends StatelessWidget {
           if (item.produto.descricao != null) ...[
             const SizedBox(height: 4),
             Text(item.produto.descricao!, maxLines: 2, overflow: TextOverflow.ellipsis,
-                style: const TextStyle(color: Colors.white60, fontSize: 12, height: 1.4)),
+                style: TextStyle(color: context.colors.onPrimarySecondary, fontSize: 12, height: 1.4)),
           ],
           const SizedBox(height: 8),
           // Lotes
           Text('${item.lotes.length} lote${item.lotes.length != 1 ? 's' : ''}',
-              style: const TextStyle(color: Colors.white54, fontSize: 11)),
+              style: TextStyle(color: context.colors.onPrimaryMuted, fontSize: 11)),
           if (lote != null) ...[
             const SizedBox(height: 2),
             Text(lote.precoCustoFormatado,
-                style: const TextStyle(color: AppColors.accent, fontSize: 12, fontWeight: FontWeight.w600)),
+                style: TextStyle(color: context.colors.accent, fontSize: 12, fontWeight: FontWeight.w600)),
           ],
         ])),
       ]),

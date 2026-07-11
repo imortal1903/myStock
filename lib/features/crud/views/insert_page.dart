@@ -77,8 +77,8 @@ class _InsertViewState extends State<_InsertView>
 
   Widget _dateTheme(BuildContext c, Widget child) => Theme(
     data: Theme.of(c).copyWith(
-      colorScheme: const ColorScheme.dark(
-          primary: AppColors.accent, surface: AppColors.surface),
+      colorScheme: ColorScheme.dark(
+          primary: context.colors.accent, surface: context.colors.surface),
     ),
     child: child,
   );
@@ -88,21 +88,21 @@ class _InsertViewState extends State<_InsertView>
     final vm = context.watch<InsertViewModel>();
 
     return Scaffold(
-      backgroundColor: AppColors.bg,
+      backgroundColor: context.colors.bg,
       appBar: AppBar(
-        backgroundColor: AppColors.surface, elevation: 0,
+        backgroundColor: context.colors.surface, elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_new, color: Colors.white70, size: 18),
+          icon: Icon(Icons.arrow_back_ios_new, color: context.colors.textSecondary, size: 18),
           onPressed: () => Navigator.pop(context),
         ),
-        title: const Text('Novo Produto',
-            style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w600)),
+        title: Text('Novo Produto',
+            style: TextStyle(color: context.colors.textPrimary, fontSize: 16, fontWeight: FontWeight.w600)),
         centerTitle: true,
         bottom: TabBar(
           controller: _tabs,
-          labelColor: AppColors.accent,
-          unselectedLabelColor: Colors.white38,
-          indicatorColor: AppColors.accent,
+          labelColor: context.colors.accent,
+          unselectedLabelColor: context.colors.textFaint,
+          indicatorColor: context.colors.accent,
           tabs: const [
             Tab(icon: Icon(Icons.inventory_2_outlined), text: 'Produto'),
             Tab(icon: Icon(Icons.layers_outlined),       text: 'Lote'),
@@ -140,7 +140,7 @@ class _InsertViewState extends State<_InsertView>
                     ? 'Produto e lote salvos!'
                     : 'Produto salvo!',
               ),
-              backgroundColor: AppColors.primary,
+              backgroundColor: context.colors.primary,
             ));
             context.read<InsertViewModel>().reset();
             _nomeCtrl.clear();
@@ -235,16 +235,16 @@ class _ProdutoTabState extends State<_ProdutoTab>
                 const SizedBox(height: 8),
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 14),
-                  decoration: BoxDecoration(color: AppColors.surface, borderRadius: BorderRadius.circular(12)),
+                  decoration: BoxDecoration(color: context.colors.surface, borderRadius: BorderRadius.circular(12)),
                   child: DropdownButtonHideUnderline(
                     child: DropdownButton<int?>(
                       value: vm.categoriaId,
                       isExpanded: true,
-                      dropdownColor: AppColors.surface,
-                      style: const TextStyle(color: Colors.white, fontSize: 15),
-                      icon: const Icon(Icons.keyboard_arrow_down, color: AppColors.accent),
+                      dropdownColor: context.colors.surface,
+                      style: TextStyle(color: context.colors.textPrimary, fontSize: 15),
+                      icon: Icon(Icons.keyboard_arrow_down, color: context.colors.accent),
                       items: [
-                        const DropdownMenuItem(value: null, child: Text('Sem categoria', style: TextStyle(color: Colors.white54))),
+                        DropdownMenuItem(value: null, child: Text('Sem categoria', style: TextStyle(color: context.colors.textMuted))),
                         ...vm.categorias.map((c) =>
                             DropdownMenuItem(value: c.id, child: Text(c.nome))),
                       ],
@@ -345,8 +345,8 @@ class _LoteTabState extends State<_LoteTab>
                     lastDate: DateTime.now(),
                     builder: (c, child) => Theme(
                       data: Theme.of(c).copyWith(
-                        colorScheme: const ColorScheme.dark(
-                            primary: AppColors.accent, surface: AppColors.surface),
+                        colorScheme: ColorScheme.dark(
+                            primary: context.colors.accent, surface: context.colors.surface),
                       ),
                       child: child!,
                     ),
@@ -377,7 +377,7 @@ class _SaveBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      color: AppColors.bg,
+      color: context.colors.bg,
       padding: EdgeInsets.fromLTRB(16, 8, 16, MediaQuery.of(context).padding.bottom + 12),
       child: Column(mainAxisSize: MainAxisSize.min, children: [
         if (errorMessage != null)
@@ -390,14 +390,14 @@ class _SaveBar extends StatelessWidget {
           child: ElevatedButton(
             onPressed: isLoading ? null : onSave,
             style: ElevatedButton.styleFrom(
-              backgroundColor: AppColors.accent,
-              disabledBackgroundColor: AppColors.accent.withValues(alpha: 0.5),
+              backgroundColor: context.colors.accent,
+              disabledBackgroundColor: context.colors.accent.withValues(alpha: 0.5),
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
               elevation: 0,
             ),
             child: isLoading
-                ? const SizedBox(width: 22, height: 22,
-                child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2.5))
+                ? SizedBox(width: 22, height: 22,
+                child: CircularProgressIndicator(color: context.colors.textPrimary, strokeWidth: 2.5))
                 : Text(temDadosLote
                 ? 'Salvar produto e lote'
                 : 'Salvar produto',
@@ -416,7 +416,7 @@ class _Label extends StatelessWidget {
   const _Label(this.text);
   @override
   Widget build(BuildContext context) => Text(text,
-      style: const TextStyle(color: Colors.white70, fontSize: 13, fontWeight: FontWeight.w500));
+      style: TextStyle(color: context.colors.textSecondary, fontSize: 13, fontWeight: FontWeight.w500));
 }
 
 class _Field extends StatelessWidget {
@@ -449,13 +449,13 @@ class _Field extends StatelessWidget {
         controller: ctrl, maxLines: maxLines,
         keyboardType: keyboardType, textCapitalization: capitalization,
         inputFormatters: inputFormatters,
-        style: const TextStyle(color: Colors.white, fontSize: 15),
+        style: TextStyle(color: context.colors.textPrimary, fontSize: 15),
         decoration: InputDecoration(
-          hintText: hint, hintStyle: const TextStyle(color: Colors.white30),
-          prefixIcon: Icon(icon, color: Colors.white38, size: 20),
-          filled: true, fillColor: AppColors.surface,
+          hintText: hint, hintStyle: TextStyle(color: context.colors.textFaint),
+          prefixIcon: Icon(icon, color: context.colors.textFaint, size: 20),
+          filled: true, fillColor: context.colors.surface,
           border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
-          focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: AppColors.accent, width: 1.5)),
+          focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: context.colors.accent, width: 1.5)),
           errorBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: Colors.redAccent, width: 1.5)),
           focusedErrorBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: Colors.redAccent, width: 1.5)),
           errorStyle: const TextStyle(color: Colors.redAccent),
@@ -475,13 +475,13 @@ class _Dropdown extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Container(
     padding: const EdgeInsets.symmetric(horizontal: 14),
-    decoration: BoxDecoration(color: AppColors.surface, borderRadius: BorderRadius.circular(12)),
+    decoration: BoxDecoration(color: context.colors.surface, borderRadius: BorderRadius.circular(12)),
     child: DropdownButtonHideUnderline(
       child: DropdownButton<String>(
         value: value, isExpanded: true,
-        dropdownColor: AppColors.surface,
-        style: const TextStyle(color: Colors.white, fontSize: 15),
-        icon: const Icon(Icons.keyboard_arrow_down, color: AppColors.accent),
+        dropdownColor: context.colors.surface,
+        style: TextStyle(color: context.colors.textPrimary, fontSize: 15),
+        icon: Icon(Icons.keyboard_arrow_down, color: context.colors.accent),
         items: items.map((u) => DropdownMenuItem(value: u, child: Text(u))).toList(),
         onChanged: (v) => onChanged(v!),
       ),
@@ -505,15 +505,15 @@ class _DateButton extends StatelessWidget {
       height: 52,
       padding: const EdgeInsets.symmetric(horizontal: 14),
       decoration: BoxDecoration(
-        color: AppColors.surface, borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: date != null ? AppColors.accent : Colors.transparent, width: 1.5),
+        color: context.colors.surface, borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: date != null ? context.colors.accent : Colors.transparent, width: 1.5),
       ),
       child: Row(children: [
-        const Icon(Icons.calendar_today, color: Colors.white38, size: 20),
+        Icon(Icons.calendar_today, color: context.colors.textFaint, size: 20),
         const SizedBox(width: 12),
-        Text(_label, style: TextStyle(color: date == null ? Colors.white38 : Colors.white, fontSize: 15)),
+        Text(_label, style: TextStyle(color: date == null ? context.colors.textFaint : context.colors.textPrimary, fontSize: 15)),
         const Spacer(),
-        const Icon(Icons.keyboard_arrow_down, color: AppColors.accent, size: 20),
+        Icon(Icons.keyboard_arrow_down, color: context.colors.accent, size: 20),
       ]),
     ),
   );

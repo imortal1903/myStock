@@ -27,7 +27,7 @@ class SalesPage extends StatelessWidget {
                 Container(
                   width: 36, height: 36,
                   decoration: BoxDecoration(
-                    color: AppColors.primary,
+                    color: DarkBlueColors.primary,
                     borderRadius: BorderRadius.circular(10),
                   ),
                   child: const Icon(Icons.sell_outlined,
@@ -74,7 +74,7 @@ class _SummaryCard extends StatelessWidget {
       margin: const EdgeInsets.fromLTRB(16, 0, 16, 16),
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: AppColors.primary,
+        color: DarkBlueColors.primary,
         borderRadius: BorderRadius.circular(14),
       ),
       child: Row(
@@ -112,7 +112,7 @@ class _SummaryItem extends StatelessWidget {
     return Column(children: [
       Text(value,
           style: const TextStyle(
-              color: AppColors.accent,
+              color: DarkBlueColors.accent,
               fontSize: 16,
               fontWeight: FontWeight.w700)),
       const SizedBox(height: 2),
@@ -152,7 +152,7 @@ class _SaleCard extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: AppColors.surface,
+        color: DarkBlueColors.surface,
         borderRadius: BorderRadius.circular(14),
         border: Border.all(color: Colors.white10),
       ),
@@ -161,7 +161,7 @@ class _SaleCard extends StatelessWidget {
           Container(
             width: 48, height: 48,
             decoration: BoxDecoration(
-              color: AppColors.primary,
+              color: DarkBlueColors.primary,
               borderRadius: BorderRadius.circular(12),
             ),
             child: const Icon(Icons.receipt_long_outlined,
@@ -182,7 +182,7 @@ class _SaleCard extends StatelessWidget {
                   '${sale.quantidade} ${sale.produto.unidade} · '
                       'R\$ ${sale.totalPago.toStringAsFixed(2)}',
                   style: const TextStyle(
-                      color: AppColors.accent, fontSize: 12),
+                      color: DarkBlueColors.accent, fontSize: 12),
                 ),
                 const SizedBox(height: 2),
                 Text(sale.dataFormatada,

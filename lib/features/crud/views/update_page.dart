@@ -29,22 +29,22 @@ class _UpdateView extends StatelessWidget {
     if (vm.status == UpdateStatus.success) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (!context.mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
           content: Text('Salvo com sucesso!'),
-          backgroundColor: AppColors.primary,
+          backgroundColor: context.colors.primary,
         ));
         context.read<UpdateViewModel>().resetStatus();
       });
     }
 
     return Scaffold(
-      backgroundColor: AppColors.bg,
+      backgroundColor: context.colors.bg,
       appBar: AppBar(
-        backgroundColor: AppColors.surface,
+        backgroundColor: context.colors.surface,
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_new,
-              color: Colors.white70, size: 18),
+          icon: Icon(Icons.arrow_back_ios_new,
+              color: context.colors.textSecondary, size: 18),
           onPressed: () {
             final vm = context.read<UpdateViewModel>();
             if (vm.selectedLote != null) {
@@ -58,8 +58,8 @@ class _UpdateView extends StatelessWidget {
         ),
         title: Text(
           _title(context.watch<UpdateViewModel>()),
-          style: const TextStyle(
-              color: Colors.white, fontSize: 16, fontWeight: FontWeight.w600),
+          style: TextStyle(
+              color: context.colors.textPrimary, fontSize: 16, fontWeight: FontWeight.w600),
         ),
         centerTitle: true,
       ),
@@ -92,11 +92,11 @@ class _ProductList extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (vm.isLoading && vm.produtos.isEmpty) {
-      return const Center(child: CircularProgressIndicator(color: AppColors.accent));
+      return Center(child: CircularProgressIndicator(color: context.colors.accent));
     }
     if (vm.produtos.isEmpty) {
-      return const Center(child: Text('Nenhum produto cadastrado.',
-          style: TextStyle(color: Colors.white54)));
+      return Center(child: Text('Nenhum produto cadastrado.',
+          style: TextStyle(color: context.colors.textMuted)));
     }
     return ListView.separated(
       padding: const EdgeInsets.all(16),
@@ -122,25 +122,25 @@ class _ProductTile extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
         decoration: BoxDecoration(
-            color: AppColors.surface,
+            color: context.colors.surface,
             borderRadius: BorderRadius.circular(14),
-            border: Border.all(color: Colors.white10)),
+            border: Border.all(color: context.colors.divider)),
         child: Row(children: [
           Container(
             width: 42, height: 42,
             decoration: BoxDecoration(
-                color: AppColors.primary, borderRadius: BorderRadius.circular(10)),
-            child: const Icon(Icons.inventory_2_outlined, color: Colors.white, size: 20),
+                color: context.colors.primary, borderRadius: BorderRadius.circular(10)),
+            child: Icon(Icons.inventory_2_outlined, color: context.colors.onPrimary, size: 20),
           ),
           const SizedBox(width: 14),
           Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Text(produto.nome, style: const TextStyle(
-                color: Colors.white, fontSize: 15, fontWeight: FontWeight.w600)),
+            Text(produto.nome, style: TextStyle(
+                color: context.colors.textPrimary, fontSize: 15, fontWeight: FontWeight.w600)),
             const SizedBox(height: 2),
             Text('${produto.unidade} · ${produto.ativo ? "Ativo" : "Inativo"}',
-                style: const TextStyle(color: AppColors.accent, fontSize: 12)),
+                style: TextStyle(color: context.colors.accent, fontSize: 12)),
           ])),
-          const Icon(Icons.chevron_right, color: Colors.white38, size: 20),
+          Icon(Icons.chevron_right, color: context.colors.textFaint, size: 20),
         ]),
       ),
     );
@@ -189,9 +189,9 @@ class _ProdutoDetailState extends State<_ProdutoDetail>
     return Column(children: [
       TabBar(
         controller: _tabs,
-        labelColor: AppColors.accent,
-        unselectedLabelColor: Colors.white38,
-        indicatorColor: AppColors.accent,
+        labelColor: context.colors.accent,
+        unselectedLabelColor: context.colors.textFaint,
+        indicatorColor: context.colors.accent,
         tabs: const [
           Tab(icon: Icon(Icons.edit_outlined),   text: 'Dados'),
           Tab(icon: Icon(Icons.layers_outlined),  text: 'Lotes'),
@@ -240,13 +240,13 @@ class _ProdutoDetailState extends State<_ProdutoDetail>
                   child: ElevatedButton(
                     onPressed: vm.isLoading ? null : () => vm.saveProduto(),
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: AppColors.accent,
+                      backgroundColor: context.colors.accent,
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
                       elevation: 0,
                     ),
                     child: vm.isLoading
-                        ? const SizedBox(width: 22, height: 22,
-                        child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2.5))
+                        ? SizedBox(width: 22, height: 22,
+                        child: CircularProgressIndicator(color: context.colors.textPrimary, strokeWidth: 2.5))
                         : const Text('Salvar dados do produto',
                         style: TextStyle(color: Color(0xFF1A1A2E), fontSize: 15, fontWeight: FontWeight.w700)),
                   ),
@@ -267,7 +267,7 @@ class _ProdutoDetailState extends State<_ProdutoDetail>
                     label: const Text('Adicionar novo lote',
                         style: TextStyle(color: Color(0xFF1A1A2E), fontSize: 15, fontWeight: FontWeight.w700)),
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: AppColors.accent,
+                      backgroundColor: context.colors.accent,
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                       elevation: 0,
                     ),
@@ -276,8 +276,8 @@ class _ProdutoDetailState extends State<_ProdutoDetail>
               ),
               Expanded(
                 child: vm.lotes.isEmpty
-                    ? const Center(child: Text('Nenhum lote cadastrado.',
-                    style: TextStyle(color: Colors.white54)))
+                    ? Center(child: Text('Nenhum lote cadastrado.',
+                    style: TextStyle(color: context.colors.textMuted)))
                     : ListView.separated(
                   padding: const EdgeInsets.all(16),
                   itemCount: vm.lotes.length,
@@ -303,32 +303,32 @@ class _LoteTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final cor = lote.estaVencido ? Colors.redAccent : AppColors.accent;
+    final cor = lote.estaVencido ? Colors.redAccent : context.colors.accent;
     return GestureDetector(
       onTap: onTap,
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
         decoration: BoxDecoration(
-            color: AppColors.surface,
+            color: context.colors.surface,
             borderRadius: BorderRadius.circular(14),
-            border: Border.all(color: Colors.white10)),
+            border: Border.all(color: context.colors.divider)),
         child: Row(children: [
           Container(
             width: 42, height: 42,
-            decoration: BoxDecoration(color: AppColors.primary, borderRadius: BorderRadius.circular(10)),
-            child: const Icon(Icons.layers_outlined, color: Colors.white, size: 20),
+            decoration: BoxDecoration(color: context.colors.primary, borderRadius: BorderRadius.circular(10)),
+            child: Icon(Icons.layers_outlined, color: context.colors.onPrimary, size: 20),
           ),
           const SizedBox(width: 14),
           Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
             Text(lote.numeroLote ?? 'Lote #${lote.id}',
-                style: const TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.w600)),
+                style: TextStyle(color: context.colors.textPrimary, fontSize: 14, fontWeight: FontWeight.w600)),
             const SizedBox(height: 2),
             Text('Qtd: ${lote.quantidade} · Val: ${lote.validadeFormatada}',
                 style: TextStyle(color: cor, fontSize: 12)),
             Text(lote.status.label,
                 style: TextStyle(color: cor.withValues(alpha: 0.7), fontSize: 11)),
           ])),
-          const Icon(Icons.chevron_right, color: Colors.white38, size: 20),
+          Icon(Icons.chevron_right, color: context.colors.textFaint, size: 20),
         ]),
       ),
     );
@@ -372,8 +372,8 @@ class _LoteFormState extends State<_LoteForm> {
       lastDate: DateTime.now().add(const Duration(days: 3650)),
       builder: (c, child) => Theme(
         data: Theme.of(c).copyWith(
-          colorScheme: const ColorScheme.dark(
-              primary: AppColors.accent, surface: AppColors.surface),
+          colorScheme: ColorScheme.dark(
+              primary: context.colors.accent, surface: context.colors.surface),
         ),
         child: child!,
       ),
@@ -430,14 +430,14 @@ class _LoteFormState extends State<_LoteForm> {
           const SizedBox(height: 8),
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 14),
-            decoration: BoxDecoration(color: AppColors.surface, borderRadius: BorderRadius.circular(12)),
+            decoration: BoxDecoration(color: context.colors.surface, borderRadius: BorderRadius.circular(12)),
             child: DropdownButtonHideUnderline(
               child: DropdownButton<LoteStatus>(
                 value: vm.editStatusLote,
                 isExpanded: true,
-                dropdownColor: AppColors.surface,
-                style: const TextStyle(color: Colors.white, fontSize: 15),
-                icon: const Icon(Icons.keyboard_arrow_down, color: AppColors.accent),
+                dropdownColor: context.colors.surface,
+                style: TextStyle(color: context.colors.textPrimary, fontSize: 15),
+                icon: Icon(Icons.keyboard_arrow_down, color: context.colors.accent),
                 items: LoteStatus.values.map((s) =>
                     DropdownMenuItem(value: s, child: Text(s.label))).toList(),
                 onChanged: (s) => vm.setStatusLote(s!),
@@ -454,14 +454,14 @@ class _LoteFormState extends State<_LoteForm> {
             child: ElevatedButton(
               onPressed: vm.isLoading ? null : () => vm.saveLote(),
               style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.accent,
-                disabledBackgroundColor: AppColors.accent.withValues(alpha: 0.5),
+                backgroundColor: context.colors.accent,
+                disabledBackgroundColor: context.colors.accent.withValues(alpha: 0.5),
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
                 elevation: 0,
               ),
               child: vm.isLoading
-                  ? const SizedBox(width: 22, height: 22,
-                  child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2.5))
+                  ? SizedBox(width: 22, height: 22,
+                  child: CircularProgressIndicator(color: context.colors.textPrimary, strokeWidth: 2.5))
                   : const Text('Salvar lote',
                   style: TextStyle(color: Color(0xFF1A1A2E), fontSize: 15, fontWeight: FontWeight.w700)),
             ),
@@ -479,7 +479,7 @@ class _Label extends StatelessWidget {
   const _Label(this.text);
   @override
   Widget build(BuildContext context) => Text(text,
-      style: const TextStyle(color: Colors.white70, fontSize: 13, fontWeight: FontWeight.w500));
+      style: TextStyle(color: context.colors.textSecondary, fontSize: 13, fontWeight: FontWeight.w500));
 }
 
 class _InfoBanner extends StatelessWidget {
@@ -489,14 +489,14 @@ class _InfoBanner extends StatelessWidget {
   Widget build(BuildContext context) => Container(
     padding: const EdgeInsets.all(14),
     decoration: BoxDecoration(
-      color: AppColors.primary.withValues(alpha: 0.25),
+      color: context.colors.primary.withValues(alpha: 0.25),
       borderRadius: BorderRadius.circular(12),
-      border: Border.all(color: AppColors.primary.withValues(alpha: 0.5)),
+      border: Border.all(color: context.colors.primary.withValues(alpha: 0.5)),
     ),
     child: Row(children: [
-      const Icon(Icons.info_outline, color: AppColors.accent, size: 18),
+      Icon(Icons.info_outline, color: context.colors.accent, size: 18),
       const SizedBox(width: 10),
-      Expanded(child: Text(text, style: const TextStyle(color: Colors.white70, fontSize: 13))),
+      Expanded(child: Text(text, style: TextStyle(color: context.colors.textSecondary, fontSize: 13))),
     ]),
   );
 }
@@ -527,12 +527,12 @@ class _Field extends StatelessWidget {
       controller: ctrl, maxLines: maxLines,
       keyboardType: keyboardType, textCapitalization: capitalization,
       inputFormatters: inputFormatters,
-      style: const TextStyle(color: Colors.white, fontSize: 15),
+      style: TextStyle(color: context.colors.textPrimary, fontSize: 15),
       decoration: InputDecoration(
-        prefixIcon: Icon(icon, color: Colors.white38, size: 20),
-        filled: true, fillColor: AppColors.surface,
+        prefixIcon: Icon(icon, color: context.colors.textFaint, size: 20),
+        filled: true, fillColor: context.colors.surface,
         border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
-        focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: AppColors.accent, width: 1.5)),
+        focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: context.colors.accent, width: 1.5)),
         errorBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: Colors.redAccent, width: 1.5)),
         focusedErrorBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: Colors.redAccent, width: 1.5)),
         errorStyle: const TextStyle(color: Colors.redAccent),
@@ -551,12 +551,12 @@ class _Dropdown extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Container(
     padding: const EdgeInsets.symmetric(horizontal: 14),
-    decoration: BoxDecoration(color: AppColors.surface, borderRadius: BorderRadius.circular(12)),
+    decoration: BoxDecoration(color: context.colors.surface, borderRadius: BorderRadius.circular(12)),
     child: DropdownButtonHideUnderline(
       child: DropdownButton<String>(
-        value: value, isExpanded: true, dropdownColor: AppColors.surface,
-        style: const TextStyle(color: Colors.white, fontSize: 15),
-        icon: const Icon(Icons.keyboard_arrow_down, color: AppColors.accent),
+        value: value, isExpanded: true, dropdownColor: context.colors.surface,
+        style: TextStyle(color: context.colors.textPrimary, fontSize: 15),
+        icon: Icon(Icons.keyboard_arrow_down, color: context.colors.accent),
         items: items.map((u) => DropdownMenuItem(value: u, child: Text(u))).toList(),
         onChanged: (v) => onChanged(v!),
       ),
@@ -579,15 +579,15 @@ class _DateButton extends StatelessWidget {
     child: Container(
       height: 52, padding: const EdgeInsets.symmetric(horizontal: 14),
       decoration: BoxDecoration(
-        color: AppColors.surface, borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: date != null ? AppColors.accent : Colors.transparent, width: 1.5),
+        color: context.colors.surface, borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: date != null ? context.colors.accent : Colors.transparent, width: 1.5),
       ),
       child: Row(children: [
-        const Icon(Icons.calendar_today, color: Colors.white38, size: 20),
+        Icon(Icons.calendar_today, color: context.colors.textFaint, size: 20),
         const SizedBox(width: 12),
-        Text(_label, style: TextStyle(color: date == null ? Colors.white38 : Colors.white, fontSize: 15)),
+        Text(_label, style: TextStyle(color: date == null ? context.colors.textFaint : context.colors.textPrimary, fontSize: 15)),
         const Spacer(),
-        const Icon(Icons.keyboard_arrow_down, color: AppColors.accent, size: 20),
+        Icon(Icons.keyboard_arrow_down, color: context.colors.accent, size: 20),
       ]),
     ),
   );

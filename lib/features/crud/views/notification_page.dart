@@ -36,9 +36,9 @@ class _NotificationView extends StatelessWidget {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (!context.mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
+          SnackBar(
             content: Text('Configurações salvas e notificações agendadas!'),
-            backgroundColor: AppColors.success,
+            backgroundColor: context.colors.success,
           ),
         );
         context.read<NotificationViewModel>().resetStatus();
@@ -49,32 +49,32 @@ class _NotificationView extends StatelessWidget {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (!context.mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(vm.error!), backgroundColor: AppColors.danger),
+          SnackBar(content: Text(vm.error!), backgroundColor: context.colors.danger),
         );
         context.read<NotificationViewModel>().resetStatus();
       });
     }
 
     return Scaffold(
-      backgroundColor: AppColors.bg,
+      backgroundColor: context.colors.bg,
       appBar: AppBar(
-        backgroundColor: AppColors.surface,
+        backgroundColor: context.colors.surface,
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_new,
-              color: Colors.white70, size: 18),
+          icon: Icon(Icons.arrow_back_ios_new,
+              color: context.colors.textSecondary, size: 18),
           onPressed: () => Navigator.of(context).pop(),
         ),
-        title: const Text('Notificações',
+        title: Text('Notificações',
             style: TextStyle(
-                color: Colors.white,
+                color: context.colors.textPrimary,
                 fontSize: 16,
                 fontWeight: FontWeight.w600)),
         centerTitle: true,
       ),
       body: vm.loading
-          ? const Center(
-          child: CircularProgressIndicator(color: AppColors.accent))
+          ? Center(
+          child: CircularProgressIndicator(color: context.colors.accent))
           : _NotificationBody(vm: vm),
     );
   }
@@ -102,29 +102,29 @@ class _NotificationBody extends StatelessWidget {
           // ── Toggle principal ────────────────────────────────────────────────
           _Card(
             child: Row(children: [
-              const Icon(Icons.notifications_active_outlined,
-                  color: AppColors.accent, size: 22),
+              Icon(Icons.notifications_active_outlined,
+                  color: context.colors.accent, size: 22),
               const SizedBox(width: 14),
-              const Expanded(
+              Expanded(
                 child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text('Ativar notificações',
                           style: TextStyle(
-                              color: Colors.white,
+                              color: context.colors.textPrimary,
                               fontSize: 15,
                               fontWeight: FontWeight.w600)),
                       SizedBox(height: 2),
                       Text('Receber alertas de vencimento',
                           style: TextStyle(
-                              color: Colors.white54, fontSize: 12)),
+                              color: context.colors.textMuted, fontSize: 12)),
                     ]),
               ),
               Switch(
                 value: cfg.ativado,
                 onChanged: vm.setAtivado,
-                activeThumbColor: AppColors.accent,
-                inactiveTrackColor: Colors.white12,
+                activeThumbColor: context.colors.accent,
+                inactiveTrackColor: context.colors.divider,
               ),
             ]),
           ),
@@ -211,12 +211,12 @@ class _NotificationBody extends StatelessWidget {
                 // ── Botão testar ───────────────────────────────────────────
                 OutlinedButton.icon(
                   onPressed: () => vm.testar(),
-                  icon: const Icon(Icons.send_outlined,
-                      color: AppColors.accent, size: 18),
-                  label: const Text('Enviar notificação de teste',
-                      style: TextStyle(color: AppColors.accent, fontSize: 14)),
+                  icon: Icon(Icons.send_outlined,
+                      color: context.colors.accent, size: 18),
+                  label: Text('Enviar notificação de teste',
+                      style: TextStyle(color: context.colors.accent, fontSize: 14)),
                   style: OutlinedButton.styleFrom(
-                    side: const BorderSide(color: AppColors.accent),
+                    side: BorderSide(color: context.colors.accent),
                     padding: const EdgeInsets.symmetric(vertical: 14),
                     shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(12)),
@@ -233,18 +233,18 @@ class _NotificationBody extends StatelessWidget {
             child: ElevatedButton(
               onPressed: vm.isSaving ? null : () => vm.salvar(),
               style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.accent,
+                backgroundColor: context.colors.accent,
                 disabledBackgroundColor:
-                AppColors.accent.withValues(alpha: 0.5),
+                context.colors.accent.withValues(alpha: 0.5),
                 shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(14)),
                 elevation: 0,
               ),
               child: vm.isSaving
-                  ? const SizedBox(
+                  ? SizedBox(
                   width: 22, height: 22,
                   child: CircularProgressIndicator(
-                      color: Colors.white, strokeWidth: 2.5))
+                      color: context.colors.textPrimary, strokeWidth: 2.5))
                   : const Text('Salvar e agendar',
                   style: TextStyle(
                       color: Color(0xFF1A1A2E),
@@ -267,16 +267,16 @@ class _NotificationBody extends StatelessWidget {
       initialTime: TimeOfDay(hour: cfg.hora, minute: cfg.minuto),
       builder: (ctx, child) => Theme(
         data: Theme.of(ctx).copyWith(
-          colorScheme: const ColorScheme.dark(
-              primary: AppColors.accent, surface: AppColors.surface),
-          timePickerTheme: const TimePickerThemeData(
-            backgroundColor:    AppColors.surface,
-            hourMinuteColor:    AppColors.bg,
-            hourMinuteTextColor: Colors.white,
-            dialBackgroundColor: AppColors.bg,
-            dialHandColor:      AppColors.accent,
-            dialTextColor:      Colors.white,
-            entryModeIconColor: AppColors.accent,
+          colorScheme: ColorScheme.dark(
+              primary: context.colors.accent, surface: context.colors.surface),
+          timePickerTheme: TimePickerThemeData(
+            backgroundColor:    context.colors.surface,
+            hourMinuteColor:    context.colors.bg,
+            hourMinuteTextColor: context.colors.textPrimary,
+            dialBackgroundColor: context.colors.bg,
+            dialHandColor:      context.colors.accent,
+            dialTextColor:      context.colors.textPrimary,
+            entryModeIconColor: context.colors.accent,
           ),
         ),
         child: child!,
@@ -305,21 +305,21 @@ class _Header extends StatelessWidget {
       Container(
         width: 48, height: 48,
         decoration: BoxDecoration(
-            color: AppColors.primary, borderRadius: BorderRadius.circular(14)),
-        child: const Icon(Icons.notifications_outlined,
-            color: Colors.white, size: 24),
+            color: context.colors.primary, borderRadius: BorderRadius.circular(14)),
+        child: Icon(Icons.notifications_outlined,
+            color: context.colors.onPrimary, size: 24),
       ),
       const SizedBox(width: 14),
-      const Expanded(
+      Expanded(
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           Text('Alertas de validade',
               style: TextStyle(
-                  color: Colors.white,
+                  color: context.colors.textPrimary,
                   fontSize: 18,
                   fontWeight: FontWeight.w700)),
           SizedBox(height: 4),
           Text('Receba avisos antes que seus produtos vençam.',
-              style: TextStyle(color: Colors.white54, fontSize: 13)),
+              style: TextStyle(color: context.colors.textMuted, fontSize: 13)),
         ]),
       ),
     ]);
@@ -334,9 +334,9 @@ class _Card extends StatelessWidget {
   Widget build(BuildContext context) => Container(
     padding: const EdgeInsets.all(16),
     decoration: BoxDecoration(
-        color: AppColors.surface,
+        color: context.colors.surface,
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: Colors.white10)),
+        border: Border.all(color: context.colors.divider)),
     child: child,
   );
 }
@@ -357,16 +357,16 @@ class _RowLabel extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Row(children: [
-      Icon(icon, color: Colors.white54, size: 18),
+      Icon(icon, color: context.colors.textMuted, size: 18),
       const SizedBox(width: 10),
       Expanded(
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           Text(label,
-              style: const TextStyle(color: Colors.white54, fontSize: 12)),
+              style: TextStyle(color: context.colors.textMuted, fontSize: 12)),
           const SizedBox(height: 2),
           Text(value,
-              style: const TextStyle(
-                  color: Colors.white,
+              style: TextStyle(
+                  color: context.colors.textPrimary,
                   fontSize: 15,
                   fontWeight: FontWeight.w600)),
         ]),
@@ -388,12 +388,12 @@ class _TextButton extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
         decoration: BoxDecoration(
-          color: AppColors.primary.withValues(alpha: 0.5),
+          color: context.colors.primary.withValues(alpha: 0.5),
           borderRadius: BorderRadius.circular(8),
         ),
         child: Text(label,
-            style: const TextStyle(
-                color: AppColors.accent,
+            style: TextStyle(
+                color: context.colors.accent,
                 fontSize: 13,
                 fontWeight: FontWeight.w500)),
       ),
@@ -416,17 +416,17 @@ class _Chip extends StatelessWidget {
         duration: const Duration(milliseconds: 180),
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
         decoration: BoxDecoration(
-          color: selected ? AppColors.accent.withValues(alpha: 0.2) : AppColors.bg,
+          color: selected ? context.colors.accent.withValues(alpha: 0.2) : context.colors.bg,
           borderRadius: BorderRadius.circular(10),
           border: Border.all(
-            color: selected ? AppColors.accent : Colors.white24,
+            color: selected ? context.colors.accent : context.colors.textGhost,
             width: selected ? 1.5 : 1.0,
           ),
         ),
         child: Text(
           label,
           style: TextStyle(
-            color:      selected ? AppColors.accent : Colors.white60,
+            color:      selected ? context.colors.accent : context.colors.textSecondary,
             fontSize:   13,
             fontWeight: selected ? FontWeight.w600 : FontWeight.w400,
           ),
@@ -445,40 +445,40 @@ class _PreviewCard extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: AppColors.primary.withValues(alpha: 0.2),
+        color: context.colors.primary.withValues(alpha: 0.2),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppColors.primary.withValues(alpha: 0.5)),
+        border: Border.all(color: context.colors.primary.withValues(alpha: 0.5)),
       ),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        const Row(children: [
-          Icon(Icons.preview_outlined, color: AppColors.accent, size: 16),
+        Row(children: [
+          Icon(Icons.preview_outlined, color: context.colors.accent, size: 16),
           SizedBox(width: 8),
           Text('Como vai funcionar',
               style: TextStyle(
-                  color: AppColors.accent,
+                  color: context.colors.accent,
                   fontSize: 13,
                   fontWeight: FontWeight.w600)),
         ]),
         const SizedBox(height: 10),
-        _line(
+        _line(context,
           '• Primeiro aviso ${config.diasAntes} '
               'dia${config.diasAntes > 1 ? 's' : ''} antes do vencimento, '
               'às ${config.horarioLabel}',
         ),
         const SizedBox(height: 4),
-        _line(
+        _line(context,
           '• Repetido ${config.intervaloLabel.toLowerCase()} '
               'até a data de validade',
         ),
         const SizedBox(height: 4),
-        _line('• Máximo de 20 notificações por produto'),
+        _line(context, '• Máximo de 20 notificações por produto'),
       ]),
     );
   }
 
-  Widget _line(String text) => Text(
+  Widget _line(BuildContext context, String text) => Text(
     text,
-    style: const TextStyle(
-        color: Colors.white70, fontSize: 12, height: 1.5),
+    style: TextStyle(
+        color: context.colors.textSecondary, fontSize: 12, height: 1.5),
   );
 }
