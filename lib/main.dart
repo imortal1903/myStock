@@ -1,21 +1,28 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:provider/provider.dart';
 
+import 'core/theme/color_palette.dart';
 import 'core/theme/theme_controller.dart';
+
 import 'features/crud/viewmodels/home_viewmodel.dart';
 import 'features/crud/views/home_page.dart';
+
 import 'features/settings/repositories/settings_repository.dart';
 import 'features/settings/viewmodels/settings_viewmodel.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  final settingsRepository = SettingsRepository();
-  final settingsIniciais = await settingsRepository.carregar();
 
-  runApp(MyStockApp(
-    settingsRepository: settingsRepository,
-    themeModeInicial: settingsIniciais.themeMode,
-  ));
+  final settingsRepository = SettingsRepository();
+  final settings = await settingsRepository.carregar();
+
+  runApp(
+    MyStockApp(
+      settingsRepository: settingsRepository,
+      themeModeInicial: settings.themeMode,
+    ),
+  );
 }
 
 class MyStockApp extends StatelessWidget {
@@ -32,14 +39,20 @@ class MyStockApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MultiProvider(
       providers: [
-        ChangeNotifierProvider(create: (_) => HomeViewModel()),
-        ChangeNotifierProvider(create: (_) => ThemeController(themeModeInicial)),
+        ChangeNotifierProvider(
+          create: (_) => HomeViewModel(),
+        ),
+
+        ChangeNotifierProvider(
+          create: (_) => ThemeController(themeModeInicial),
+        ),
+
         ChangeNotifierProxyProvider<ThemeController, SettingsViewModel>(
-          create: (ctx) => SettingsViewModel(
+          create: (context) => SettingsViewModel(
             repository: settingsRepository,
-            themeController: ctx.read<ThemeController>(),
+            themeController: context.read<ThemeController>(),
           ),
-          update: (ctx, themeController, previous) =>
+          update: (context, themeController, previous) =>
           previous ??
               SettingsViewModel(
                 repository: settingsRepository,
@@ -48,31 +61,53 @@ class MyStockApp extends StatelessWidget {
         ),
       ],
       child: Consumer<ThemeController>(
-        builder: (context, themeController, _) {
+        builder: (context, themeController, child) {
           return MaterialApp(
-            title: 'myStock',
             debugShowCheckedModeBanner: false,
+            title: 'myStock',
+
             themeMode: themeController.themeMode,
+
+            locale: const Locale('pt', 'BR'),
+            supportedLocales: const [Locale('pt', 'BR')],
+            localizationsDelegates: const [
+              GlobalMaterialLocalizations.delegate,
+              GlobalWidgetsLocalizations.delegate,
+              GlobalCupertinoLocalizations.delegate,
+            ],
+
             theme: ThemeData(
+              useMaterial3: true,
               brightness: Brightness.light,
-              scaffoldBackgroundColor: const Color(0xFFF8FAFC),
+              scaffoldBackgroundColor: kLightPalette.bg,
               fontFamily: 'Roboto',
-              colorScheme: const ColorScheme.light(
-                primary: Color(0xFF6B3FA0),
-                secondary: Color(0xFFFFB830),
-                surface: Colors.white,
+
+              colorScheme: ColorScheme.light(
+                primary: kLightPalette.primary,
+                secondary: kLightPalette.accent,
+                surface: kLightPalette.surface,
+                error: kLightPalette.danger,
               ),
+
+              dividerColor: kLightPalette.divider,
             ),
+
             darkTheme: ThemeData(
+              useMaterial3: true,
               brightness: Brightness.dark,
-              scaffoldBackgroundColor: const Color(0xFF1A1A2E),
+              scaffoldBackgroundColor: kDarkPalette.bg,
               fontFamily: 'Roboto',
-              colorScheme: const ColorScheme.dark(
-                primary: Color(0xFF6B3FA0),
-                secondary: Color(0xFFFFB830),
-                surface: Color(0xFF252540),
+
+              colorScheme: ColorScheme.dark(
+                primary: kDarkPalette.primary,
+                secondary: kDarkPalette.accent,
+                surface: kDarkPalette.surface,
+                error: kDarkPalette.danger,
               ),
+
+              dividerColor: kDarkPalette.divider,
             ),
+
             home: const HomePage(),
           );
         },

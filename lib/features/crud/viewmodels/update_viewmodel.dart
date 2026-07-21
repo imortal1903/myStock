@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../models/produto.dart';
 import '../models/lote.dart';
 import '../models/categoria.dart';
+import '../models/estoque_resumo.dart';
 import '../repositories/produto_repository.dart';
 import '../repositories/lote_repository.dart';
 import '../repositories/categoria_repository.dart';
@@ -35,6 +36,7 @@ class UpdateViewModel extends ChangeNotifier {
   List<Produto>   _produtos    = [];
   List<Categoria> _categorias  = [];
   List<Lote>      _lotes       = [];
+  Map<int, EstoqueResumo> _estoquePorProduto = {};
 
   Produto?     _selectedProduto;
   Lote?        _selectedLote;
@@ -61,6 +63,7 @@ class UpdateViewModel extends ChangeNotifier {
   // ── Getters ────────────────────────────────────────────────────────────────
 
   List<Produto>   get produtos         => List.unmodifiable(_produtos);
+  Map<int, EstoqueResumo> get estoquePorProduto => _estoquePorProduto;
   List<Categoria> get categorias       => List.unmodifiable(_categorias);
   List<Lote>      get lotes            => List.unmodifiable(_lotes);
   Produto?        get selectedProduto  => _selectedProduto;
@@ -71,6 +74,9 @@ class UpdateViewModel extends ChangeNotifier {
 
   static const unidades = ['kg', 'g', 'L', 'mL', 'un', 'cx', 'pct'];
 
+  EstoqueResumo estoqueDe(Produto p) =>
+      _estoquePorProduto[p.id] ?? EstoqueResumo.vazio;
+
   // ── Load ───────────────────────────────────────────────────────────────────
 
   Future<void> loadProdutos() async {
@@ -78,6 +84,7 @@ class UpdateViewModel extends ChangeNotifier {
     notifyListeners();
     try {
       _produtos = await _produtoRepo.search('');
+      _estoquePorProduto = await _loteRepo.getResumoEstoquePorProduto();
       _status   = UpdateStatus.idle;
     } catch (e) {
       _status       = UpdateStatus.error;
@@ -247,16 +254,14 @@ class UpdateViewModel extends ChangeNotifier {
       final quantidade = int.parse(editQuantidadeText.trim());
       LoteStatus novoStatus;
 
-      // CORREÇÃO: Usa isBeforeDate para que produtos que vencem HOJE não sejam considerados vencidos HOJE.
-      if(editDataValidade!.isBeforeDate(DateTime.now())) {
-        novoStatus = LoteStatus.vencido;
-      } else if(quantidade <= 0) {
+      if (quantidade <= 0) {
         novoStatus = LoteStatus.esgotado;
+      } else if (editDataValidade!.isBeforeDate(DateTime.now())) {
+        novoStatus = LoteStatus.vencido;
       } else {
         novoStatus = LoteStatus.ativo;
       }
 
-      // CORREÇÃO: Identifica se é insert (sem ID) ou update (com ID)
       final isNew = _selectedLote!.id == null;
 
       final updated = _selectedLote!.copyWith(
@@ -279,6 +284,7 @@ class UpdateViewModel extends ChangeNotifier {
 
       await NotificationScheduler.reschedule();
 
+      _estoquePorProduto = await _loteRepo.getResumoEstoquePorProduto();
       _selectedLote = null;
       _status = UpdateStatus.success;
     } catch (e) {

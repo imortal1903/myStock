@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import '../../../core/theme/app_colors.dart';
+import '../../../core/theme/color_palette.dart';
 
 import '../../../core/notifications/notification_config.dart';
 import '../repositories/notificacao_repository.dart';

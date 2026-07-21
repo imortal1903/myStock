@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
-import '../../../core/theme/app_colors.dart';
+import '../../../core/theme/color_palette.dart';
 import '../viewmodels/settings_viewmodel.dart';
 
 // ─── Página de Configurações ───────────────────────────────────────────────

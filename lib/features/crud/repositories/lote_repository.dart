@@ -1,11 +1,12 @@
 import 'package:sqflite/sqflite.dart';
 import '../../../core/database/db.dart';
 import '../models/lote.dart';
+import '../models/estoque_resumo.dart';
 import '../../../core/extensions/sqldate_extension.dart';
 
 class LoteRepository {
-  final DatabaseHelper _db;
-  LoteRepository({DatabaseHelper? db}) : _db = db ?? DatabaseHelper.instance;
+  final Db _db;
+  LoteRepository({Db? db}) : _db = db ?? Db.instance;
 
   // ── INSERT ─────────────────────────────────────────────────────────────────
 
@@ -43,7 +44,7 @@ class LoteRepository {
     return rows.map(Lote.fromMap).toList();
   }
 
-  // ── LOTES PRÓXIMOS AO VENCIMENTO ──────────────────────────────────────────
+  // ── LOTES PRÓXIMOS AO VENCIMENTO ───────────────────────────────────────────
   // Retorna lotes com status ATIVO cuja data_validade <= hoje + [dias] dias.
 
   Future<List<Lote>> getLotesProximosVencimento(int dias) async {
@@ -62,7 +63,7 @@ class LoteRepository {
     return rows.map(Lote.fromMap).toList();
   }
 
-  // ── ATUALIZA STATUS ───────────────────────────────────────────────────────
+  // ── ATUALIZA STATUS ────────────────────────────────────────────────────────
 
   Future<void> atualizarStatusVencidos() async {
     final db = await _db.database;
@@ -91,5 +92,27 @@ class LoteRepository {
         where: 'id = ?', whereArgs: [id], limit: 1);
     if (rows.isEmpty) return null;
     return Lote.fromMap(rows.first);
+  }
+
+  // ── RESUMO DE ESTOQUE POR PRODUTO ──────────────────────────────────────────
+
+  Future<Map<int, EstoqueResumo>> getResumoEstoquePorProduto() async {
+    final db = await _db.database;
+    final rows = await db.rawQuery('''
+      SELECT
+        produto_id,
+        SUM(CASE WHEN status = 'ATIVO'   THEN quantidade ELSE 0 END) AS qtd_ativa,
+        MAX(CASE WHEN status = 'VENCIDO' THEN 1 ELSE 0 END)          AS tem_vencido
+      FROM lotes_produto
+      GROUP BY produto_id
+    ''');
+
+    return {
+      for (final r in rows)
+        r['produto_id'] as int: EstoqueResumo(
+          quantidadeAtiva: (r['qtd_ativa'] as num).toInt(),
+          temLoteVencido: (r['tem_vencido'] as int) == 1,
+        ),
+    };
   }
 }

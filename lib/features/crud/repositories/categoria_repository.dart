@@ -3,8 +3,8 @@ import '../../../core/database/db.dart';
 import '../models/categoria.dart';
 
 class CategoriaRepository {
-  final DatabaseHelper _db;
-  CategoriaRepository({DatabaseHelper? db}) : _db = db ?? DatabaseHelper.instance;
+  final Db _db;
+  CategoriaRepository({Db? db}) : _db = db ?? Db.instance;
 
   Future<List<Categoria>> getAll() async {
     final db   = await _db.database;

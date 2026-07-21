@@ -4,11 +4,11 @@ import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 import 'package:sqflite/sqflite.dart';
 
-class DatabaseHelper {
-  static final DatabaseHelper instance = DatabaseHelper._internal();
+class Db {
+  static final Db instance = Db._internal();
   static Database? _db;
 
-  DatabaseHelper._internal();
+  Db._internal();
 
   Future<Database> get database async {
     _db ??= await _initDB();
@@ -22,7 +22,7 @@ class DatabaseHelper {
 
     final path = p.join(dbDir.path, 'estoque.db');
 
-    return openDatabase(          // ← sqflite nativo, sem databaseFactory
+    return openDatabase(
       path,
       version: 1,
       onOpen: (db) async => await db.execute('PRAGMA foreign_keys = ON'),
@@ -30,12 +30,10 @@ class DatabaseHelper {
     );
   }
 
-  // sqflite não suporta múltiplos statements por execute().
-  // Usamos batch para rodar cada DDL individualmente numa única transação.
   Future<void> _onCreate(Database db, int version) async {
     final b = db.batch();
 
-    // ── Categorias ────────────────────────────────────────────────────────────
+    // ── Categorias ───────────────────────────────────────────────────────────
     b.execute('''
       CREATE TABLE categorias (
         id        INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -44,7 +42,7 @@ class DatabaseHelper {
       )
     ''');
 
-    // ── Produtos ──────────────────────────────────────────────────────────────
+    // ── Produtos ─────────────────────────────────────────────────────────────
     b.execute('''
       CREATE TABLE produtos (
         id            INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -60,7 +58,7 @@ class DatabaseHelper {
       )
     ''');
 
-    // ── Lotes dos Produtos ────────────────────────────────────────────────────
+    // ── Lotes dos Produtos ───────────────────────────────────────────────────
     b.execute('''
       CREATE TABLE lotes_produto (
         id              INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -78,7 +76,7 @@ class DatabaseHelper {
       )
     ''');
 
-    // ── Movimentações de Estoque ──────────────────────────────────────────────
+    // ── Movimentações de Estoque ─────────────────────────────────────────────
     b.execute('''
       CREATE TABLE movimentacoes_estoque (
         id         INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -92,7 +90,7 @@ class DatabaseHelper {
       )
     ''');
 
-    // ── Vendas ────────────────────────────────────────────────────────────────
+    // ── Vendas ───────────────────────────────────────────────────────────────
     b.execute('''
       CREATE TABLE vendas (
         id          INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -101,7 +99,7 @@ class DatabaseHelper {
       )
     ''');
 
-    // ── Itens da Venda ────────────────────────────────────────────────────────
+    // ── Itens da Venda ───────────────────────────────────────────────────────
     b.execute('''
       CREATE TABLE venda_itens (
         id             INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -117,7 +115,7 @@ class DatabaseHelper {
       )
     ''');
 
-    // ── Favoritos ─────────────────────────────────────────────────────────────
+    // ── Favoritos ────────────────────────────────────────────────────────────
     b.execute('''
       CREATE TABLE produtos_favoritos (
         produto_id INTEGER PRIMARY KEY,
@@ -126,7 +124,7 @@ class DatabaseHelper {
       )
     ''');
 
-    // ── Notificações ──────────────────────────────────────────────────────────
+    // ── Notificações ─────────────────────────────────────────────────────────
     b.execute('''
       CREATE TABLE notificacoes (
         id          INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -142,7 +140,7 @@ class DatabaseHelper {
       )
     ''');
 
-    // ── Configuração das notificações ─────────────────────────────────────────
+    // ── Configuração das notificações ────────────────────────────────────────
     b.execute('''
         CREATE TABLE notification_config (
           id               INTEGER PRIMARY KEY,
@@ -164,7 +162,7 @@ class DatabaseHelper {
           'intervaloHoras': 24,});
 
 
-    // ── Índices ───────────────────────────────────────────────────────────────
+    // ── Índices ──────────────────────────────────────────────────────────────
     b.execute('CREATE INDEX idx_produto_nome      ON produtos(nome)');
     b.execute('CREATE INDEX idx_lote_produto      ON lotes_produto(produto_id)');
     b.execute('CREATE INDEX idx_lote_validade     ON lotes_produto(data_validade)');

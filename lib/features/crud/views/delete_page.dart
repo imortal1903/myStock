@@ -4,7 +4,7 @@ import 'package:provider/provider.dart';
 import '../models/lote.dart';
 import '../models/produto.dart';
 import '../viewmodels/delete_viewmodel.dart';
-import '../../../core/theme/app_colors.dart';
+import '../../../core/theme/color_palette.dart';
 
 class DeletePage extends StatelessWidget {
   const DeletePage({super.key});

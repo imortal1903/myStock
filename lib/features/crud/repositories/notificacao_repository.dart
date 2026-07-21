@@ -4,8 +4,8 @@ import '../models/notificacao.dart';
 import '../../../core/notifications/notification_config.dart';
 
 class NotificacaoRepository {
-  final DatabaseHelper _db;
-  NotificacaoRepository({DatabaseHelper? db}) : _db = db ?? DatabaseHelper.instance;
+  final Db _db;
+  NotificacaoRepository({Db? db}) : _db = db ?? Db.instance;
 
   Future<int> insert(Notificacao n) async {
     final db = await _db.database;

@@ -4,7 +4,7 @@ import 'package:provider/provider.dart';
 
 import '../models/produto.dart';
 import '../viewmodels/insert_viewmodel.dart';
-import '../../../core/theme/app_colors.dart';
+import '../../../core/theme/color_palette.dart';
 
 class InsertPage extends StatelessWidget {
   const InsertPage({super.key});
@@ -47,7 +47,7 @@ class _InsertViewState extends State<_InsertView>
     _nomeCtrl.dispose();
     _descCtrl.dispose();
     _barcodeCtrl.dispose();
-    _estoqueMinCtrl.dispose(); // ADICIONADO
+    _estoqueMinCtrl.dispose();
     _loteNumCtrl.dispose();
     _qtdCtrl.dispose();
     _precoCtrl.dispose();
@@ -75,13 +75,7 @@ class _InsertViewState extends State<_InsertView>
     }
   }
 
-  Widget _dateTheme(BuildContext c, Widget child) => Theme(
-    data: Theme.of(c).copyWith(
-      colorScheme: ColorScheme.dark(
-          primary: context.colors.accent, surface: context.colors.surface),
-    ),
-    child: child,
-  );
+  Widget _dateTheme(BuildContext c, Widget child) => buildThemedDatePicker(c, child);
 
   @override
   Widget build(BuildContext context) {
@@ -230,29 +224,34 @@ class _ProdutoTabState extends State<_ProdutoTab>
               ),
               const SizedBox(height: 14),
               // Categoria
-              if (vm.categorias.isNotEmpty) ...[
-                const _Label('Categoria'),
-                const SizedBox(height: 8),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 14),
-                  decoration: BoxDecoration(color: context.colors.surface, borderRadius: BorderRadius.circular(12)),
-                  child: DropdownButtonHideUnderline(
-                    child: DropdownButton<int?>(
-                      value: vm.categoriaId,
-                      isExpanded: true,
-                      dropdownColor: context.colors.surface,
-                      style: TextStyle(color: context.colors.textPrimary, fontSize: 15),
-                      icon: Icon(Icons.keyboard_arrow_down, color: context.colors.accent),
-                      items: [
-                        DropdownMenuItem(value: null, child: Text('Sem categoria', style: TextStyle(color: context.colors.textMuted))),
-                        ...vm.categorias.map((c) =>
-                            DropdownMenuItem(value: c.id, child: Text(c.nome))),
-                      ],
-                      onChanged: vm.setCategoria,
-                    ),
+              const _Label('Categoria'),
+              const SizedBox(height: 8),
+              vm.categorias.isEmpty
+                  ? const _CategoriaEmptyWarning()
+                  : Container(
+                padding: const EdgeInsets.symmetric(horizontal: 14),
+                decoration: BoxDecoration(
+                    color: context.colors.surface,
+                    borderRadius: BorderRadius.circular(12)),
+                child: DropdownButtonHideUnderline(
+                  child: DropdownButton<int?>(
+                    value: vm.categoriaId,
+                    isExpanded: true,
+                    dropdownColor: context.colors.surface,
+                    style: TextStyle(color: context.colors.textPrimary, fontSize: 15),
+                    icon: Icon(Icons.keyboard_arrow_down, color: context.colors.accent),
+                    items: [
+                      DropdownMenuItem(
+                          value: null,
+                          child: Text('Sem categoria',
+                              style: TextStyle(color: context.colors.textMuted))),
+                      ...vm.categorias.map((c) =>
+                          DropdownMenuItem(value: c.id, child: Text(c.nome))),
+                    ],
+                    onChanged: vm.setCategoria,
                   ),
                 ),
-              ],
+              ),
             ]),
       ),
     );
@@ -343,13 +342,7 @@ class _LoteTabState extends State<_LoteTab>
                     initialDate: vm.dataEntrada,
                     firstDate: DateTime(2000),
                     lastDate: DateTime.now(),
-                    builder: (c, child) => Theme(
-                      data: Theme.of(c).copyWith(
-                        colorScheme: ColorScheme.dark(
-                            primary: context.colors.accent, surface: context.colors.surface),
-                      ),
-                      child: child!,
-                    ),
+                    builder: (c, child) => buildThemedDatePicker(c, child!),
                   );
                   if (picked != null) vm.setDataEntrada(picked);
                 },
@@ -516,5 +509,30 @@ class _DateButton extends StatelessWidget {
         Icon(Icons.keyboard_arrow_down, color: context.colors.accent, size: 20),
       ]),
     ),
+  );
+}
+
+class _CategoriaEmptyWarning extends StatelessWidget {
+  const _CategoriaEmptyWarning();
+
+  @override
+  Widget build(BuildContext context) => Container(
+    padding: const EdgeInsets.all(14),
+    decoration: BoxDecoration(
+      color: Colors.orangeAccent.withValues(alpha: 0.12),
+      borderRadius: BorderRadius.circular(12),
+      border: Border.all(color: Colors.orangeAccent.withValues(alpha: 0.4)),
+    ),
+    child: Row(children: [
+      const Icon(Icons.warning_amber_rounded, color: Colors.orangeAccent, size: 18),
+      const SizedBox(width: 10),
+      Expanded(
+        child: Text(
+          'Nenhuma categoria cadastrada. O produto pode ser salvo sem categoria, '
+              'mas você pode criar uma antes de continuar.',
+          style: TextStyle(color: context.colors.textSecondary, fontSize: 13),
+        ),
+      ),
+    ]),
   );
 }

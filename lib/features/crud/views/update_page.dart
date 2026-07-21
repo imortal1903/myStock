@@ -4,8 +4,9 @@ import 'package:provider/provider.dart';
 
 import '../models/lote.dart';
 import '../models/produto.dart';
+import '../models/estoque_resumo.dart';
 import '../viewmodels/update_viewmodel.dart';
-import '../../../core/theme/app_colors.dart';
+import '../../../core/theme/color_palette.dart';
 
 class UpdatePage extends StatelessWidget {
   const UpdatePage({super.key});
@@ -104,6 +105,7 @@ class _ProductList extends StatelessWidget {
       separatorBuilder: (_, __) => const SizedBox(height: 10),
       itemBuilder: (ctx, i) => _ProductTile(
         produto: vm.produtos[i],
+        estoque: vm.estoqueDe(vm.produtos[i]),
         onTap: () => vm.selectProduto(vm.produtos[i]),
       ),
     );
@@ -112,11 +114,25 @@ class _ProductList extends StatelessWidget {
 
 class _ProductTile extends StatelessWidget {
   final Produto produto;
+  final EstoqueResumo estoque;
   final VoidCallback onTap;
-  const _ProductTile({required this.produto, required this.onTap});
+  const _ProductTile({required this.produto, required this.estoque, required this.onTap});
 
   @override
   Widget build(BuildContext context) {
+    final Color badgeCor;
+    final String badgeTexto;
+    if (estoque.disponivel) {
+      badgeCor = context.colors.success;
+      badgeTexto = 'Qtd: ${estoque.quantidadeAtiva}';
+    } else if (estoque.vencido) {
+      badgeCor = context.colors.danger;
+      badgeTexto = 'Vencido';
+    } else {
+      badgeCor = Colors.orangeAccent;
+      badgeTexto = 'Esgotado';
+    }
+
     return GestureDetector(
       onTap: onTap,
       child: Container(
@@ -136,9 +152,21 @@ class _ProductTile extends StatelessWidget {
           Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
             Text(produto.nome, style: TextStyle(
                 color: context.colors.textPrimary, fontSize: 15, fontWeight: FontWeight.w600)),
-            const SizedBox(height: 2),
-            Text('${produto.unidade} · ${produto.ativo ? "Ativo" : "Inativo"}',
-                style: TextStyle(color: context.colors.accent, fontSize: 12)),
+            const SizedBox(height: 4),
+            Row(children: [
+              Text('${produto.unidade} · ${produto.ativo ? "Ativo" : "Inativo"}',
+                  style: TextStyle(color: context.colors.accent, fontSize: 12)),
+              const SizedBox(width: 8),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+                decoration: BoxDecoration(
+                  color: badgeCor.withValues(alpha: 0.15),
+                  borderRadius: BorderRadius.circular(6),
+                ),
+                child: Text(badgeTexto,
+                    style: TextStyle(color: badgeCor, fontSize: 10, fontWeight: FontWeight.w600)),
+              ),
+            ]),
           ])),
           Icon(Icons.chevron_right, color: context.colors.textFaint, size: 20),
         ]),
@@ -233,6 +261,36 @@ class _ProdutoDetailState extends State<_ProdutoDetail>
                   value: vm.editUnidade,
                   items: UpdateViewModel.unidades,
                   onChanged: vm.setUnidade,
+                ),
+                const SizedBox(height: 14),
+                // Categoria (opcional)
+                const _Label('Categoria'),
+                const SizedBox(height: 8),
+                vm.categorias.isEmpty
+                    ? const _CategoriaEmptyWarning()
+                    : Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 14),
+                  decoration: BoxDecoration(
+                      color: context.colors.surface,
+                      borderRadius: BorderRadius.circular(12)),
+                  child: DropdownButtonHideUnderline(
+                    child: DropdownButton<int?>(
+                      value: vm.editCategoriaId,
+                      isExpanded: true,
+                      dropdownColor: context.colors.surface,
+                      style: TextStyle(color: context.colors.textPrimary, fontSize: 15),
+                      icon: Icon(Icons.keyboard_arrow_down, color: context.colors.accent),
+                      items: [
+                        DropdownMenuItem(
+                            value: null,
+                            child: Text('Sem categoria',
+                                style: TextStyle(color: context.colors.textMuted))),
+                        ...vm.categorias.map((c) =>
+                            DropdownMenuItem(value: c.id, child: Text(c.nome))),
+                      ],
+                      onChanged: vm.setCategoria,
+                    ),
+                  ),
                 ),
                 const SizedBox(height: 14),
                 SizedBox(
@@ -370,13 +428,7 @@ class _LoteFormState extends State<_LoteForm> {
           ?? DateTime.now(),
       firstDate: DateTime(2000),
       lastDate: DateTime.now().add(const Duration(days: 3650)),
-      builder: (c, child) => Theme(
-        data: Theme.of(c).copyWith(
-          colorScheme: ColorScheme.dark(
-              primary: context.colors.accent, surface: context.colors.surface),
-        ),
-        child: child!,
-      ),
+      builder: (c, child) => buildThemedDatePicker(c, child!),
     );
     if (picked != null) {
       isValidade ? vm.setDataValidade(picked) : vm.setDataFabricacao(picked);
@@ -590,5 +642,30 @@ class _DateButton extends StatelessWidget {
         Icon(Icons.keyboard_arrow_down, color: context.colors.accent, size: 20),
       ]),
     ),
+  );
+}
+
+class _CategoriaEmptyWarning extends StatelessWidget {
+  const _CategoriaEmptyWarning();
+
+  @override
+  Widget build(BuildContext context) => Container(
+    padding: const EdgeInsets.all(14),
+    decoration: BoxDecoration(
+      color: Colors.orangeAccent.withValues(alpha: 0.12),
+      borderRadius: BorderRadius.circular(12),
+      border: Border.all(color: Colors.orangeAccent.withValues(alpha: 0.4)),
+    ),
+    child: Row(children: [
+      const Icon(Icons.warning_amber_rounded, color: Colors.orangeAccent, size: 18),
+      const SizedBox(width: 10),
+      Expanded(
+        child: Text(
+          'Nenhuma categoria cadastrada. O produto pode ser atualizado sem categoria, '
+              'mas você pode criar uma antes de continuar.',
+          style: TextStyle(color: context.colors.textSecondary, fontSize: 13),
+        ),
+      ),
+    ]),
   );
 }
