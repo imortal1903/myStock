@@ -35,4 +35,15 @@ class CategoriaRepository {
     final db = await _db.database;
     return db.delete('categorias', where: 'id = ?', whereArgs: [id]);
   }
+
+  Future<void> detachInactiveProducts(int categoriaId) async {
+    final db = await _db.database;
+
+    await db.update(
+      'produtos',
+      {'categoria_id': null},
+      where: 'categoria_id = ? AND ativo = 0',
+      whereArgs: [categoriaId],
+    );
+  }
 }

@@ -7,6 +7,7 @@ import '../models/produto.dart';
 import '../models/estoque_resumo.dart';
 import '../viewmodels/update_viewmodel.dart';
 import '../../../core/theme/color_palette.dart';
+import '../../../core/scanner/barcode_scanner_page.dart';
 
 class UpdatePage extends StatelessWidget {
   const UpdatePage({super.key});
@@ -189,7 +190,7 @@ class _ProdutoDetailState extends State<_ProdutoDetail>
   late final TextEditingController _nomeCtrl;
   late final TextEditingController _descCtrl;
   late final TextEditingController _barcodeCtrl;
-  late final TextEditingController _estoqueMinCtrl; // Para o estoque mínimo
+  late final TextEditingController _estoqueMinCtrl;
 
   @override
   void initState() {
@@ -243,10 +244,26 @@ class _ProdutoDetailState extends State<_ProdutoDetail>
                     icon: Icons.description_outlined, maxLines: 3,
                     onSaved: (v) => vm.editDescricao = v ?? ''),
                 const SizedBox(height: 14),
-                _Field(label: 'Código de barras', ctrl: _barcodeCtrl,
-                    icon: Icons.qr_code_outlined,
-                    keyboardType: TextInputType.number,
-                    onSaved: (v) => vm.editCodigoBarras = v ?? ''),
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    Expanded(
+                      child: _Field(label: 'Código de barras', ctrl: _barcodeCtrl,
+                          icon: Icons.qr_code_outlined,
+                          keyboardType: TextInputType.number,
+                          onSaved: (v) => vm.editCodigoBarras = v ?? '',
+                          validator: vm.validateCodigoBarras,
+                          onChanged: (v) => vm.editCodigoBarras = v),
+                    ),
+                    const SizedBox(width: 10),
+                    _ScanButton(
+                      onScanned: (codigo) => setState(() {
+                        _barcodeCtrl.text = codigo;
+                        vm.editCodigoBarras = codigo;
+                      }),
+                    ),
+                  ],
+                ),
                 const SizedBox(height: 14),
                 _Field(label: 'Estoque mínimo', ctrl: _estoqueMinCtrl,
                     icon: Icons.warning_amber_rounded,
@@ -443,7 +460,6 @@ class _LoteFormState extends State<_LoteForm> {
       child: Form(
         key: vm.loteFormKey,
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          // CORREÇÃO: Banner dinâmico informando se é edição ou inserção
           _InfoBanner(vm.selectedLote!.id == null
               ? 'Adicionando novo lote para:\n${vm.selectedProduto!.nome}'
               : 'Editando: ${vm.selectedLote!.numeroLote ?? 'Lote #${vm.selectedLote!.id}'}'),
@@ -563,12 +579,13 @@ class _Field extends StatelessWidget {
   final List<TextInputFormatter>? inputFormatters;
   final FormFieldSetter<String>? onSaved;
   final FormFieldValidator<String>? validator;
+  final ValueChanged<String>? onChanged;
 
   const _Field({
     required this.label, required this.ctrl, required this.icon,
     this.maxLines = 1, this.keyboardType = TextInputType.text,
     this.capitalization = TextCapitalization.none,
-    this.inputFormatters, this.onSaved, this.validator,
+    this.inputFormatters, this.onSaved, this.validator, this.onChanged,
   });
 
   @override
@@ -589,9 +606,39 @@ class _Field extends StatelessWidget {
         focusedErrorBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: Colors.redAccent, width: 1.5)),
         errorStyle: const TextStyle(color: Colors.redAccent),
       ),
-      onSaved: onSaved, validator: validator,
+      onSaved: onSaved, validator: validator, onChanged: onChanged,
     ),
   ]);
+}
+
+class _ScanButton extends StatelessWidget {
+  final ValueChanged<String> onScanned;
+  const _ScanButton({required this.onScanned});
+
+  @override
+  Widget build(BuildContext context) => Material(
+    color: context.colors.surface,
+    borderRadius: BorderRadius.circular(12),
+    child: InkWell(
+      borderRadius: BorderRadius.circular(12),
+      onTap: () async {
+        final codigo = await Navigator.push<String>(
+          context,
+          MaterialPageRoute(builder: (_) => const BarcodeScannerPage()),
+        );
+        if (codigo != null && codigo.isNotEmpty) onScanned(codigo);
+      },
+      child: Container(
+        width: 52, height: 52,
+        alignment: Alignment.center,
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: context.colors.accent, width: 1.5),
+        ),
+        child: Icon(Icons.qr_code_scanner, color: context.colors.accent, size: 22),
+      ),
+    ),
+  );
 }
 
 class _Dropdown extends StatelessWidget {

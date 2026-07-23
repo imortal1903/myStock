@@ -36,7 +36,7 @@ class InsertViewModel extends ChangeNotifier {
   String  nome           = '';
   String  descricao      = '';
   String  codigoBarras   = '';
-  String  estoqueMinText = ''; 
+  String  estoqueMinText = '';
   String  unidade        = 'un';
   int?    categoriaId;
 
@@ -54,6 +54,8 @@ class InsertViewModel extends ChangeNotifier {
   List<Categoria> _categorias = [];
   InsertStatus    _status     = InsertStatus.idle;
   String?         _errorMessage;
+
+  String? _codigoBarrasDuplicado;
 
   List<Categoria> get categorias    => List.unmodifiable(_categorias);
   InsertStatus    get status        => _status;
@@ -85,6 +87,13 @@ class InsertViewModel extends ChangeNotifier {
     return null;
   }
 
+  String? validateCodigoBarras(String? v) {
+    if (v != null && v.trim().isNotEmpty && v.trim() == _codigoBarrasDuplicado) {
+      return 'Este código de barras já está cadastrado.';
+    }
+    return null;
+  }
+
   String? validateEstoqueMin(String? v) {
     if (v != null && v.trim().isNotEmpty) {
       final n = int.tryParse(v.trim());
@@ -102,7 +111,7 @@ class InsertViewModel extends ChangeNotifier {
   }
 
   String? validatePrecoCusto(String? v) {
-    if (v == null || v.trim().isEmpty) return null; 
+    if (v == null || v.trim().isEmpty) return null;
     final n = double.tryParse(v.replaceAll(',', '.'));
     if (n == null || n < 0) return 'Preço inválido';
     return null;
@@ -111,6 +120,12 @@ class InsertViewModel extends ChangeNotifier {
   // ── Save ───────────────────────────────────────────────────────────────────
 
   Future<bool> save() async {
+    final codigo = codigoBarras.trim();
+    _codigoBarrasDuplicado = null;
+    if (codigo.isNotEmpty && await _produtoRepo.existsCodigoBarras(codigo)) {
+      _codigoBarrasDuplicado = codigo;
+    }
+
     final produtoOk = produtoFormKey.currentState?.validate() ?? false;
 
     if (!produtoOk) return false;
@@ -153,8 +168,7 @@ class InsertViewModel extends ChangeNotifier {
       // ── Salva lote APENAS se preenchido ───────────
       if (temDadosLote) {
         final quantidade = int.tryParse(quantidadeText.trim()) ?? 0;
-        
-        // CORREÇÃO: Lógica de status consistente com a regra de "vencer amanhã"
+
         LoteStatus statusLote = LoteStatus.ativo;
         if (dataValidade!.isBeforeDate(DateTime.now())) {
           statusLote = LoteStatus.vencido;
@@ -187,7 +201,14 @@ class InsertViewModel extends ChangeNotifier {
       return true;
     } catch (e) {
       _status = InsertStatus.error;
-      _errorMessage = 'Erro ao salvar: $e';
+
+      if (e is CodigoBarrasDuplicadoException) {
+       _codigoBarrasDuplicado = e.codigoBarras;
+        produtoFormKey.currentState?.validate();
+      } else {
+        _errorMessage = 'Erro ao salvar: $e';
+      }
+
       notifyListeners();
 
       return false;
@@ -201,6 +222,7 @@ class InsertViewModel extends ChangeNotifier {
     dataFabricacao = null; dataValidade = null;
     dataEntrada = DateTime.now();
     _status = InsertStatus.idle; _errorMessage = null;
+    _codigoBarrasDuplicado = null;
     produtoFormKey.currentState?.reset();
     loteFormKey.currentState?.reset();
     notifyListeners();

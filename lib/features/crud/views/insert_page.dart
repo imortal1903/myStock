@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 import '../models/produto.dart';
 import '../viewmodels/insert_viewmodel.dart';
 import '../../../core/theme/color_palette.dart';
+import '../../../core/scanner/barcode_scanner_page.dart';
 
 class InsertPage extends StatelessWidget {
   const InsertPage({super.key});
@@ -30,7 +31,7 @@ class _InsertViewState extends State<_InsertView>
   final _nomeCtrl        = TextEditingController();
   final _descCtrl        = TextEditingController();
   final _barcodeCtrl     = TextEditingController();
-  final _estoqueMinCtrl  = TextEditingController(); // ADICIONADO
+  final _estoqueMinCtrl  = TextEditingController();
   final _loteNumCtrl     = TextEditingController();
   final _qtdCtrl         = TextEditingController();
   final _precoCtrl       = TextEditingController();
@@ -111,7 +112,7 @@ class _InsertViewState extends State<_InsertView>
             nomeCtrl: _nomeCtrl,
             descCtrl: _descCtrl,
             barcodeCtrl: _barcodeCtrl,
-            estoqueMinCtrl: _estoqueMinCtrl, // ADICIONADO
+            estoqueMinCtrl: _estoqueMinCtrl,
           ),
           _LoteTab(
             vm: vm, loteNumCtrl: _loteNumCtrl,
@@ -140,7 +141,7 @@ class _InsertViewState extends State<_InsertView>
             _nomeCtrl.clear();
             _descCtrl.clear();
             _barcodeCtrl.clear();
-            _estoqueMinCtrl.clear(); // ADICIONADO
+            _estoqueMinCtrl.clear();
             _loteNumCtrl.clear();
             _qtdCtrl.clear();
             _precoCtrl.clear();
@@ -156,14 +157,14 @@ class _InsertViewState extends State<_InsertView>
 
 class _ProdutoTab extends StatefulWidget {
   final InsertViewModel vm;
-  final TextEditingController nomeCtrl, descCtrl, barcodeCtrl, estoqueMinCtrl; // ADICIONADO
+  final TextEditingController nomeCtrl, descCtrl, barcodeCtrl, estoqueMinCtrl;
 
   const _ProdutoTab({
     required this.vm,
     required this.nomeCtrl,
     required this.descCtrl,
     required this.barcodeCtrl,
-    required this.estoqueMinCtrl, // ADICIONADO
+    required this.estoqueMinCtrl,
   });
 
   @override
@@ -199,13 +200,29 @@ class _ProdutoTabState extends State<_ProdutoTab>
                   icon: Icons.description_outlined, maxLines: 3,
                   onSaved: (v) => vm.descricao = v ?? ''),
               const SizedBox(height: 14),
-              _Field(label: 'Código de barras', hint: 'EAN / GTIN', ctrl: widget.barcodeCtrl,
-                  icon: Icons.qr_code_outlined,
-                  keyboardType: TextInputType.number,
-                  onSaved: (v) => vm.codigoBarras = v ?? ''),
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  Expanded(
+                    child: _Field(label: 'Código de barras', hint: 'EAN / GTIN', ctrl: widget.barcodeCtrl,
+                        icon: Icons.qr_code_outlined,
+                        keyboardType: TextInputType.number,
+                        onSaved: (v) => vm.codigoBarras = v ?? '',
+                        validator: vm.validateCodigoBarras,
+                        onChanged: (v) => vm.codigoBarras = v),
+                  ),
+                  const SizedBox(width: 10),
+                  _ScanButton(
+                    onScanned: (codigo) => setState(() {
+                      widget.barcodeCtrl.text = codigo;
+                      vm.codigoBarras = codigo;
+                    }),
+                  ),
+                ],
+              ),
               const SizedBox(height: 14),
 
-              // NOVO CAMPO: Estoque Mínimo
+              // Estoque Mínimo
               _Field(label: 'Estoque mínimo', hint: 'Ex: 10', ctrl: widget.estoqueMinCtrl,
                   icon: Icons.warning_amber_rounded,
                   keyboardType: TextInputType.number,
@@ -422,6 +439,7 @@ class _Field extends StatelessWidget {
   final List<TextInputFormatter>? inputFormatters;
   final FormFieldSetter<String>? onSaved;
   final FormFieldValidator<String>? validator;
+  final ValueChanged<String>? onChanged;
 
   const _Field({
     required this.label, required this.hint,
@@ -430,7 +448,7 @@ class _Field extends StatelessWidget {
     this.keyboardType = TextInputType.text,
     this.capitalization = TextCapitalization.none,
     this.inputFormatters,
-    this.onSaved, this.validator,
+    this.onSaved, this.validator, this.onChanged,
   });
 
   @override
@@ -453,10 +471,40 @@ class _Field extends StatelessWidget {
           focusedErrorBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: Colors.redAccent, width: 1.5)),
           errorStyle: const TextStyle(color: Colors.redAccent),
         ),
-        onSaved: onSaved, validator: validator,
+        onSaved: onSaved, validator: validator, onChanged: onChanged,
       ),
     ]);
   }
+}
+
+class _ScanButton extends StatelessWidget {
+  final ValueChanged<String> onScanned;
+  const _ScanButton({required this.onScanned});
+
+  @override
+  Widget build(BuildContext context) => Material(
+    color: context.colors.surface,
+    borderRadius: BorderRadius.circular(12),
+    child: InkWell(
+      borderRadius: BorderRadius.circular(12),
+      onTap: () async {
+        final codigo = await Navigator.push<String>(
+          context,
+          MaterialPageRoute(builder: (_) => const BarcodeScannerPage()),
+        );
+        if (codigo != null && codigo.isNotEmpty) onScanned(codigo);
+      },
+      child: Container(
+        width: 52, height: 52,
+        alignment: Alignment.center,
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: context.colors.accent, width: 1.5),
+        ),
+        child: Icon(Icons.qr_code_scanner, color: context.colors.accent, size: 22),
+      ),
+    ),
+  );
 }
 
 class _Dropdown extends StatelessWidget {

@@ -136,6 +136,7 @@ class CategoriaViewModel extends ChangeNotifier {
     notifyListeners();
 
     try {
+      await _repo.detachInactiveProducts(id);
       await _repo.delete(id);
       _categorias.removeWhere((c) => c.id == id);
       if (_selected?.id == id) {

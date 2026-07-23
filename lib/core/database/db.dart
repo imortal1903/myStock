@@ -24,9 +24,10 @@ class Db {
 
     return openDatabase(
       path,
-      version: 1,
+      version: 2,
       onOpen: (db) async => await db.execute('PRAGMA foreign_keys = ON'),
       onCreate: _onCreate,
+      onUpgrade: _onUpgrade,
     );
   }
 
@@ -154,12 +155,12 @@ class Db {
 
     b.insert(
         'notification_config',{
-          'id': 1,
-          'ativado': 1,
-          'diasAntes': 3,
-          'hora': 9,
-          'minuto': 0,
-          'intervaloHoras': 24,});
+      'id': 1,
+      'ativado': 1,
+      'diasAntes': 3,
+      'hora': 9,
+      'minuto': 0,
+      'intervaloHoras': 24,});
 
 
     // ── Índices ──────────────────────────────────────────────────────────────
@@ -169,6 +170,26 @@ class Db {
     b.execute('CREATE INDEX idx_vendas_data       ON vendas(criado_em)');
     b.execute('CREATE INDEX idx_notif_visualizada ON notificacoes(visualizada)');
 
+    b.execute('''
+      CREATE UNIQUE INDEX idx_produto_codigo_barras_unico
+      ON produtos(codigo_barras)
+      WHERE codigo_barras IS NOT NULL
+    ''');
+
     await b.commit(noResult: true);
+  }
+
+  Future<void> _onUpgrade(Database db, int oldVersion, int newVersion) async {
+    if (oldVersion < 2) {
+     try {
+        await db.execute('''
+          CREATE UNIQUE INDEX IF NOT EXISTS idx_produto_codigo_barras_unico
+          ON produtos(codigo_barras)
+          WHERE codigo_barras IS NOT NULL
+        ''');
+      } catch (_) {
+
+      }
+    }
   }
 }

@@ -43,6 +43,8 @@ class UpdateViewModel extends ChangeNotifier {
   UpdateStatus _status        = UpdateStatus.idle;
   String?      _errorMessage;
 
+  String? _codigoBarrasDuplicado;
+
   // Campos editáveis do produto
   String  editNome           = '';
   String  editDescricao      = '';
@@ -51,7 +53,6 @@ class UpdateViewModel extends ChangeNotifier {
   String  editUnidade        = 'un';
   int?    editCategoriaId;
 
-  // Campos editáveis do lote
   String    editNumeroLote     = '';
   String    editQuantidadeText = '';
   String    editPrecoCustoText = '';
@@ -83,6 +84,7 @@ class UpdateViewModel extends ChangeNotifier {
     _status = UpdateStatus.loading;
     notifyListeners();
     try {
+      await _loteRepo.atualizarStatusVencidos();
       _produtos = await _produtoRepo.search('');
       _estoquePorProduto = await _loteRepo.getResumoEstoquePorProduto();
       _status   = UpdateStatus.idle;
@@ -111,7 +113,9 @@ class UpdateViewModel extends ChangeNotifier {
     editEstoqueMinText = p.estoqueMin?.toString() ?? '';
     editUnidade        = p.unidade;
     editCategoriaId    = p.categoriaId;
+    _codigoBarrasDuplicado = null;
 
+    await _loteRepo.atualizarStatusVencidos();
     _lotes = await _loteRepo.getByProduto(p.id!);
     _selectedLote = null;
     _status       = UpdateStatus.idle;
@@ -131,11 +135,9 @@ class UpdateViewModel extends ChangeNotifier {
     notifyListeners();
   }
 
-  // NOVA FUNÇÃO: Prepara a View para inserir um NOVO lote
   void prepareNewLote() {
     if (_selectedProduto == null) return;
 
-    // Cria um objeto temporário sem ID para representar o novo lote
     _selectedLote = Lote(
       produtoId: _selectedProduto!.id!,
       quantidade: 0,
@@ -144,7 +146,6 @@ class UpdateViewModel extends ChangeNotifier {
       criadoEm: DateTime.now(),
     );
 
-    // Limpa os campos de texto
     editNumeroLote     = '';
     editQuantidadeText = '';
     editPrecoCustoText = '';
@@ -184,6 +185,13 @@ class UpdateViewModel extends ChangeNotifier {
     return null;
   }
 
+  String? validateCodigoBarras(String? v) {
+    if (v != null && v.trim().isNotEmpty && v.trim() == _codigoBarrasDuplicado) {
+      return 'Já existe um produto com esse código de barras';
+    }
+    return null;
+  }
+
   String? validateQuantidade(String? v) {
     if (v == null || v.trim().isEmpty) return 'Informe a quantidade';
     final n = int.tryParse(v.trim());
@@ -210,7 +218,18 @@ class UpdateViewModel extends ChangeNotifier {
 
   Future<void> saveProduto() async {
     if (_selectedProduto == null) return;
-    if (!produtoFormKey.currentState!.validate()) return;
+
+    final codigo = editCodigoBarras.trim();
+    _codigoBarrasDuplicado = null;
+    if (codigo.isNotEmpty &&
+        await _produtoRepo.existsCodigoBarras(codigo, excludeId: _selectedProduto!.id)) {
+      _codigoBarrasDuplicado = codigo;
+    }
+
+    if (!produtoFormKey.currentState!.validate()) {
+      notifyListeners();
+      return;
+    }
     produtoFormKey.currentState!.save();
 
     _status = UpdateStatus.loading; _errorMessage = null;
@@ -227,9 +246,20 @@ class UpdateViewModel extends ChangeNotifier {
       );
       await _produtoRepo.update(updated);
       _selectedProduto = updated;
+
+      final idx = _produtos.indexWhere((p) => p.id == updated.id);
+      if (idx != -1) _produtos[idx] = updated;
+
       _status = UpdateStatus.success;
     } catch (e) {
-      _status = UpdateStatus.error; _errorMessage = 'Erro: $e';
+      _status = UpdateStatus.error;
+
+      if (e is CodigoBarrasDuplicadoException) {
+        _codigoBarrasDuplicado = e.codigoBarras;
+        produtoFormKey.currentState?.validate();
+      } else {
+        _errorMessage = 'Erro: $e';
+      }
     } finally {
       notifyListeners();
     }

@@ -28,6 +28,24 @@ class ProdutoComLotes {
 
   bool get temLoteVencendo =>
       lotes.any((l) => l.status == LoteStatus.ativo && l.diasParaVencer <= 7);
+
+  int get qtdAtivos    => lotes.where((l) => l.status == LoteStatus.ativo).length;
+  int get qtdEsgotados => lotes.where((l) => l.status == LoteStatus.esgotado).length;
+  int get qtdVencidos  => lotes.where((l) => l.status == LoteStatus.vencido).length;
+
+  // Preço médio considerando apenas os lotes com preço de custo informado.
+  double? get precoMedioLotes {
+    final comPreco = lotes.where((l) => l.precoCusto != null).toList();
+    if (comPreco.isEmpty) return null;
+    final soma = comPreco.fold<double>(0, (s, l) => s + l.precoCusto!);
+    return soma / comPreco.length;
+  }
+
+  String get precoMedioFormatado {
+    final media = precoMedioLotes;
+    if (media == null) return 'Sem preço registrado';
+    return 'Média: R\$ ${media.toStringAsFixed(2).replaceAll('.', ',')}';
+  }
 }
 
 class HomeViewModel extends ChangeNotifier {
@@ -48,19 +66,19 @@ class HomeViewModel extends ChangeNotifier {
 
   // ── State ──────────────────────────────────────────────────────────────────
 
-  List<ProdutoComLotes> _items       = [];
-  List<Categoria>       _categorias  = [];
-  bool                   _isLoading  = false;
-  String?                _error;
-  String                 _query               = '';
-  int?                   _categoriaFiltroId;
-  int                    _selectedCategoryIndex = 0;
-  int                    _selectedNavIndex      = 0;
-  Timer?                 _debounce;
+  List<ProdutoComLotes>   _items       = [];
+  List<Categoria>         _categorias  = [];
+  bool                    _isLoading  = false;
+  String?                 _error;
+  String                  _query               = '';
+  int?                    _categoriaFiltroId;
+  int                     _selectedCategoryIndex = 0;
+  int                     _selectedNavIndex      = 0;
+  Timer?                  _debounce;
 
   // ── Getters ────────────────────────────────────────────────────────────────
 
-  List<ProdutoComLotes> get items                => List.unmodifiable(_items);
+  List<ProdutoComLotes> get items                 => List.unmodifiable(_items);
   List<Categoria>       get categorias            => List.unmodifiable(_categorias);
   bool                  get isLoading             => _isLoading;
   String?               get error                 => _error;

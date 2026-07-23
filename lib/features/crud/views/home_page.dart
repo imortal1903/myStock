@@ -7,8 +7,6 @@ import 'update_page.dart';
 import 'delete_page.dart';
 import 'notification_page.dart';
 import 'categoria_page.dart';
-//import '../../analytics/views/analytics_page.dart';
-//import '../../analytics/viewmodels/analytics_viewmodel.dart';
 import '../../sales/views/sale_page.dart';
 import '../../sales/viewmodels/sale_viewmodel.dart';
 import '../../../core/theme/color_palette.dart';
@@ -443,6 +441,21 @@ class _ProductList extends StatelessWidget {
   }
 }
 
+// ─── Contador de status (Ativos / Esgotados / Vencidos) ────────────────────────
+
+class _StatusCount extends StatelessWidget {
+  final String label;
+  final int value;
+  final Color color;
+  const _StatusCount({required this.label, required this.value, required this.color});
+
+  @override
+  Widget build(BuildContext context) => Text(
+    '$label: $value',
+    style: TextStyle(color: color, fontSize: 11, fontWeight: FontWeight.w600),
+  );
+}
+
 // ─── Product Card ─────────────────────────────────────────────────────────────
 
 class _ProductCard extends StatelessWidget {
@@ -451,68 +464,85 @@ class _ProductCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final lote      = item.loteAtivo;
-    final vencendo  = item.temLoteVencendo;
-    final badgeCor  = lote != null && lote.estaVencido
-        ? Colors.redAccent
+    // Lote ativo mais próximo de vencer (loteAtivo já vem ordenado por validade)
+    final loteProximo = item.loteAtivo;
+    final vencendo    = item.temLoteVencendo;
+    final valCor = loteProximo == null
+        ? context.colors.onPrimaryMuted
         : vencendo ? Colors.orangeAccent : context.colors.secondary;
-    final badgeText = lote == null
+    final valText = loteProximo == null
         ? 'Sem lote ativo'
-        : lote.estaVencido
-        ? 'Vencido'
-        : 'Val: ${lote.validadeFormatada}';
+        : 'Val: ${loteProximo.validadeFormatada}';
 
     return Container(
       margin: const EdgeInsets.only(bottom: 14),
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(color: context.colors.primary, borderRadius: BorderRadius.circular(16)),
-      child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        Container(
-          width: 90, height: 90,
-          decoration: BoxDecoration(
-            color: context.colors.primaryDark, borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: context.colors.accent, width: 1.5),
-          ),
-          child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
-            Icon(Icons.inventory_2_outlined, color: context.colors.onPrimary, size: 28),
-            const SizedBox(height: 4),
-            Text(item.produto.unidade, style: TextStyle(color: context.colors.onPrimarySecondary, fontSize: 11)),
-            const SizedBox(height: 2),
-            Text('Qtd: ${item.estoqueTotal}',
-                style: TextStyle(color: context.colors.onPrimary, fontSize: 12, fontWeight: FontWeight.w700)),
-          ]),
-        ),
-        const SizedBox(width: 14),
-        Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Row(children: [
-            Expanded(child: Text(item.produto.nome,
-                style: TextStyle(color: context.colors.onPrimary, fontSize: 16, fontWeight: FontWeight.w700))),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+      child: IntrinsicHeight(
+        child: Row(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+          AspectRatio(
+            aspectRatio: 1,
+            child: Container(
               decoration: BoxDecoration(
-                color: badgeCor.withValues(alpha: 0.2),
-                borderRadius: BorderRadius.circular(6),
+                color: context.colors.primaryDark, borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: context.colors.accent, width: 1.5),
               ),
-              child: Text(badgeText,
-                  style: TextStyle(color: badgeCor, fontSize: 10, fontWeight: FontWeight.w600)),
+              child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
+                Icon(Icons.inventory_2_outlined, color: context.colors.onPrimary, size: 28),
+                const SizedBox(height: 4),
+                Text(item.produto.unidade, style: TextStyle(color: context.colors.onPrimarySecondary, fontSize: 11)),
+                const SizedBox(height: 2),
+                Text('Qtd: ${item.estoqueTotal}',
+                    style: TextStyle(color: context.colors.onPrimary, fontSize: 12, fontWeight: FontWeight.w700)),
+              ]),
             ),
-          ]),
-          if (item.produto.descricao != null) ...[
-            const SizedBox(height: 4),
-            Text(item.produto.descricao!, maxLines: 2, overflow: TextOverflow.ellipsis,
-                style: TextStyle(color: context.colors.onPrimarySecondary, fontSize: 12, height: 1.4)),
-          ],
-          const SizedBox(height: 8),
-          // Lotes
-          Text('${item.lotes.length} lote${item.lotes.length != 1 ? 's' : ''}',
-              style: TextStyle(color: context.colors.onPrimaryMuted, fontSize: 11)),
-          if (lote != null) ...[
-            const SizedBox(height: 2),
-            Text(lote.precoCustoFormatado,
-                style: TextStyle(color: context.colors.accent, fontSize: 12, fontWeight: FontWeight.w600)),
-          ],
-        ])),
-      ]),
+          ),
+          const SizedBox(width: 14),
+          Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            // Nome + validade do lote mais próximo de vencer
+            Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Expanded(child: Text(item.produto.nome,
+                  style: TextStyle(color: context.colors.onPrimary, fontSize: 16, fontWeight: FontWeight.w700))),
+              const SizedBox(width: 8),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                decoration: BoxDecoration(
+                  color: valCor.withValues(alpha: 0.2),
+                  borderRadius: BorderRadius.circular(6),
+                ),
+                child: Text(valText,
+                    style: TextStyle(color: valCor, fontSize: 10, fontWeight: FontWeight.w600)),
+              ),
+            ]),
+            if (item.produto.descricao != null) ...[
+              const SizedBox(height: 4),
+              Text(item.produto.descricao!, maxLines: 2, overflow: TextOverflow.ellipsis,
+                  style: TextStyle(color: context.colors.onPrimarySecondary, fontSize: 12, height: 1.4)),
+            ],
+            const SizedBox(height: 8),
+            // Linha 1: (vazio) | Ativos
+            Row(mainAxisAlignment: MainAxisAlignment.end, children: [
+              _StatusCount(label: 'Ativos', value: item.qtdAtivos, color: context.colors.secondary),
+            ]),
+            const SizedBox(height: 3),
+            // Linha 2: Quant. de lotes | Esgotados
+            Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
+              Text('${item.lotes.length} lote${item.lotes.length != 1 ? 's' : ''}',
+                  style: TextStyle(color: context.colors.onPrimaryMuted, fontSize: 11)),
+              _StatusCount(label: 'Esgotados', value: item.qtdEsgotados, color: Colors.orangeAccent),
+            ]),
+            const SizedBox(height: 3),
+            // Linha 3: Preço médio dos lotes | Vencidos
+            Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
+              Expanded(
+                child: Text(item.precoMedioFormatado, overflow: TextOverflow.ellipsis,
+                    style: TextStyle(color: context.colors.accent, fontSize: 12, fontWeight: FontWeight.w600)),
+              ),
+              _StatusCount(label: 'Vencidos', value: item.qtdVencidos, color: Colors.redAccent),
+            ]),
+          ])),
+        ]),
+      ),
     );
   }
 }
