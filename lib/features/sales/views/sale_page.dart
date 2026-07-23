@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../../../core/theme/color_palette.dart';
-import '../../crud/models/produto.dart';
+import '../../../core/scanner/barcode_scanner_page.dart';
 import '../../crud/models/lote.dart';
 import '../models/item_carrinho.dart';
 import '../viewmodels/sale_viewmodel.dart';
@@ -239,8 +239,8 @@ class _LoteSelectionSheet extends StatelessWidget {
             itemBuilder: (_, i) => _LoteOptionTile(
               lote: lotes[i],
               tag: tags[lotes[i].id],
-              onTap: () {
-                vm.adicionarAoCarrinho(item, lotes[i]);
+              onAdicionar: (qtd) {
+                vm.adicionarAoCarrinho(item, lotes[i], quantidade: qtd);
                 Navigator.pop(context);
               },
             ),
@@ -251,12 +251,31 @@ class _LoteSelectionSheet extends StatelessWidget {
   }
 }
 
-class _LoteOptionTile extends StatelessWidget {
+class _LoteOptionTile extends StatefulWidget {
   final Lote lote;
   final LoteTag? tag;
-  final VoidCallback onTap;
+  final void Function(int quantidade) onAdicionar;
 
-  const _LoteOptionTile({required this.lote, required this.onTap, this.tag});
+  const _LoteOptionTile({required this.lote, required this.onAdicionar, this.tag});
+
+  @override
+  State<_LoteOptionTile> createState() => _LoteOptionTileState();
+}
+
+class _LoteOptionTileState extends State<_LoteOptionTile> {
+  late int _quantidade;
+
+  @override
+  void initState() {
+    super.initState();
+    _quantidade = widget.lote.quantidade > 0 ? 1 : 0;
+  }
+
+  void _alterar(int delta) {
+    final nova = _quantidade + delta;
+    if (nova < 1 || nova > widget.lote.quantidade) return;
+    setState(() => _quantidade = nova);
+  }
 
   Color _corDaTag(BuildContext context, LoteTag t) {
     switch (t) {
@@ -268,59 +287,80 @@ class _LoteOptionTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final cor = tag != null ? _corDaTag(context, tag!) : null;
+    final tag = widget.tag;
+    final lote = widget.lote;
+    final cor = tag != null ? _corDaTag(context, tag) : null;
 
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        margin: const EdgeInsets.only(bottom: 10),
-        padding: const EdgeInsets.all(14),
-        decoration: BoxDecoration(
-          color: context.colors.surface,
-          borderRadius: BorderRadius.circular(14),
-          border: cor != null ? Border.all(color: cor.withValues(alpha: 0.5), width: 1.2) : null,
-        ),
-        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          if (tag != null) ...[
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-              decoration: BoxDecoration(
-                color: cor!.withValues(alpha: 0.15),
-                borderRadius: BorderRadius.circular(6),
-              ),
-              child: Row(mainAxisSize: MainAxisSize.min, children: [
-                Icon(tag!.icon, color: cor, size: 12),
-                const SizedBox(width: 4),
-                Text(tag!.label,
-                    style: TextStyle(color: cor, fontSize: 10, fontWeight: FontWeight.w700)),
-              ]),
-            ),
-            const SizedBox(height: 8),
-          ],
-          Row(children: [
-            Container(
-              width: 42,
-              height: 42,
-              decoration: BoxDecoration(color: context.colors.primary, borderRadius: BorderRadius.circular(10)),
-              child: Icon(Icons.layers_outlined, color: context.colors.onPrimary, size: 20),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                Text(
-                  lote.numeroLote?.isNotEmpty == true ? lote.numeroLote! : 'Lote #${lote.id}',
-                  style: TextStyle(color: context.colors.textPrimary, fontSize: 14, fontWeight: FontWeight.w600),
-                ),
-                const SizedBox(height: 2),
-                Text('Val: ${lote.validadeFormatada} · Qtd: ${lote.quantidade}',
-                    style: TextStyle(color: context.colors.textFaint, fontSize: 12)),
-              ]),
-            ),
-            Text(lote.precoCustoFormatado,
-                style: TextStyle(color: context.colors.accent, fontSize: 13, fontWeight: FontWeight.w700)),
-          ]),
-        ]),
+    return Container(
+      margin: const EdgeInsets.only(bottom: 10),
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: context.colors.surface,
+        borderRadius: BorderRadius.circular(14),
+        border: cor != null ? Border.all(color: cor.withValues(alpha: 0.5), width: 1.2) : null,
       ),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        if (tag != null) ...[
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+            decoration: BoxDecoration(
+              color: cor!.withValues(alpha: 0.15),
+              borderRadius: BorderRadius.circular(6),
+            ),
+            child: Row(mainAxisSize: MainAxisSize.min, children: [
+              Icon(tag.icon, color: cor, size: 12),
+              const SizedBox(width: 4),
+              Text(tag.label,
+                  style: TextStyle(color: cor, fontSize: 10, fontWeight: FontWeight.w700)),
+            ]),
+          ),
+          const SizedBox(height: 8),
+        ],
+        Row(children: [
+          Container(
+            width: 42,
+            height: 42,
+            decoration: BoxDecoration(color: context.colors.primary, borderRadius: BorderRadius.circular(10)),
+            child: Icon(Icons.layers_outlined, color: context.colors.onPrimary, size: 20),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Text(
+                lote.numeroLote?.isNotEmpty == true ? lote.numeroLote! : 'Lote #${lote.id}',
+                style: TextStyle(color: context.colors.textPrimary, fontSize: 14, fontWeight: FontWeight.w600),
+              ),
+              const SizedBox(height: 2),
+              Text('Val: ${lote.validadeFormatada} · Qtd: ${lote.quantidade}',
+                  style: TextStyle(color: context.colors.textFaint, fontSize: 12)),
+            ]),
+          ),
+          Text(lote.precoCustoFormatado,
+              style: TextStyle(color: context.colors.accent, fontSize: 13, fontWeight: FontWeight.w700)),
+        ]),
+        const SizedBox(height: 12),
+        Row(children: [
+          _QtyButton(icon: Icons.remove, onTap: () => _alterar(-1)),
+          Container(
+            width: 40,
+            alignment: Alignment.center,
+            child: Text('$_quantidade',
+                style: TextStyle(color: context.colors.textPrimary, fontSize: 14, fontWeight: FontWeight.w600)),
+          ),
+          _QtyButton(icon: Icons.add, onTap: () => _alterar(1)),
+          const Spacer(),
+          ElevatedButton(
+            onPressed: _quantidade > 0 ? () => widget.onAdicionar(_quantidade) : null,
+            style: ElevatedButton.styleFrom(
+              backgroundColor: context.colors.primary,
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            ),
+            child: Text('Adicionar',
+                style: TextStyle(color: context.colors.onPrimary, fontSize: 13, fontWeight: FontWeight.w700)),
+          ),
+        ]),
+      ]),
     );
   }
 }
@@ -348,23 +388,31 @@ class _SaleSearchSectionState extends State<_SaleSearchSection> {
     final vm = context.watch<SaleViewModel>();
 
     return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-      Container(
-        height: 46,
-        decoration: BoxDecoration(color: context.colors.surface,
-            borderRadius: BorderRadius.circular(12)),
-        child: TextField(
-          controller: _ctrl,
-          style: TextStyle(color: context.colors.textSecondary, fontSize: 14),
-          onChanged: vm.buscar,
-          decoration: InputDecoration(
-            hintText: 'Buscar produto para vender...',
-            hintStyle: TextStyle(color: context.colors.textFaint, fontSize: 14),
-            prefixIcon: Icon(
-                Icons.search, color: context.colors.textFaint, size: 20),
-            border: InputBorder.none,
-            contentPadding: const EdgeInsets.symmetric(vertical: 14),
+      Row(
+        children: [
+          Expanded(
+            child: Container(
+              height: 46,
+              decoration: BoxDecoration(color: context.colors.surface,
+                  borderRadius: BorderRadius.circular(12)),
+              child: TextField(
+                controller: _ctrl,
+                style: TextStyle(color: context.colors.textSecondary, fontSize: 14),
+                onChanged: vm.buscar,
+                decoration: InputDecoration(
+                  hintText: 'Buscar produto para vender...',
+                  hintStyle: TextStyle(color: context.colors.textFaint, fontSize: 14),
+                  prefixIcon: Icon(
+                      Icons.search, color: context.colors.textFaint, size: 20),
+                  border: InputBorder.none,
+                  contentPadding: const EdgeInsets.symmetric(vertical: 14),
+                ),
+              ),
+            ),
           ),
-        ),
+          const SizedBox(width: 10),
+          _ScanButton(onScanned: (codigo) => _buscarPorCodigoEAbrirLote(context, vm, codigo)),
+        ],
       ),
       if (vm.categorias.isNotEmpty) ...[
         const SizedBox(height: 12),
@@ -372,6 +420,64 @@ class _SaleSearchSectionState extends State<_SaleSearchSection> {
       ],
     ]);
   }
+
+  Future<void> _buscarPorCodigoEAbrirLote(
+      BuildContext context, SaleViewModel vm, String codigo) async {
+    _ctrl.text = codigo;
+    await vm.buscar(codigo);
+    if (!mounted) return;
+
+    ProdutoEstoque? encontrado;
+    for (final r in vm.resultados) {
+      if (r.produto.codigoBarras == codigo) {
+        encontrado = r;
+        break;
+      }
+    }
+
+    if (encontrado != null) {
+      _abrirSeletorDeLote(context, encontrado);
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Text('Nenhum produto encontrado com esse código de barras.'),
+          backgroundColor: context.colors.danger,
+        ),
+      );
+    }
+  }
+}
+
+class _ScanButton extends StatelessWidget {
+  final Future<void> Function(String codigo) onScanned;
+  const _ScanButton({required this.onScanned});
+
+  @override
+  Widget build(BuildContext context) => Material(
+    color: context.colors.surface,
+    borderRadius: BorderRadius.circular(12),
+    child: InkWell(
+      borderRadius: BorderRadius.circular(12),
+      onTap: () async {
+        final codigo = await Navigator.push<String>(
+          context,
+          MaterialPageRoute(builder: (_) => const BarcodeScannerPage()),
+        );
+        if (codigo != null && codigo.isNotEmpty) {
+          await onScanned(codigo);
+        }
+      },
+      child: Container(
+        width: 46, height: 46,
+        alignment: Alignment.center,
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: context.colors.accent, width: 1.5),
+        ),
+        child: Icon(Icons.qr_code_scanner, color: context.colors.accent, size: 22),
+      ),
+    ),
+  );
 }
 
 class _SaleCategoryChips extends StatelessWidget {
