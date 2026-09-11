@@ -13,11 +13,13 @@ class BarcodeScannerPage extends StatefulWidget {
 
 class _BarcodeScannerPageState extends State<BarcodeScannerPage> {
   final MobileScannerController _controller = MobileScannerController(
-    detectionSpeed: DetectionSpeed.noDuplicates,
+    detectionSpeed: DetectionSpeed.normal,
+    detectionTimeoutMs: 100,
     facing: CameraFacing.back,
-    autoZoom: true,
     formats: const [
       BarcodeFormat.ean13,
+      BarcodeFormat.ean8,
+      BarcodeFormat.code128,
     ],
   );
 
@@ -25,36 +27,54 @@ class _BarcodeScannerPageState extends State<BarcodeScannerPage> {
 
   String? _lastCode;
   int _confirmations = 0;
+  DateTime? _lastDetection;
 
-  static const int _requiredConfirmations = 3;
-
-  void _onDetect(BarcodeCapture capture) {
+  Future<void> _onDetect(BarcodeCapture capture) async {
     if (_handled) return;
 
-    final barcode = capture.barcodes.firstOrNull;
+    final barcode = capture.barcodes.cast<Barcode?>().firstWhere(
+          (b) => b?.rawValue != null,
+      orElse: () => null,
+    );
     if (barcode == null) return;
 
     final value = (barcode.displayValue ?? barcode.rawValue)?.trim();
-
     if (value == null || value.isEmpty) return;
 
-    if (value.length != 13 || !_isValidEan13(value)) {
-      _lastCode = null;
-      _confirmations = 0;
+    if (!_isValidBarcode(value, barcode.format)) {
+      _resetTracking();
       return;
     }
 
-    if (_lastCode == value) {
-      _confirmations++;
+    final now = DateTime.now();
 
-      if (_confirmations >= _requiredConfirmations) {
-        _handled = true;
-        Navigator.pop(context, value);
-      }
-    } else {
+    if (_lastDetection != null &&
+        now.difference(_lastDetection!) > const Duration(milliseconds: 700)) {
+      _resetTracking();
+    }
+    _lastDetection = now;
+
+    if (_lastCode != value) {
       _lastCode = value;
       _confirmations = 1;
+    } else {
+      _confirmations++;
     }
+
+    final requiredConfirmations = barcode.format == BarcodeFormat.code128 ? 2 : 1;
+
+    if (_confirmations >= requiredConfirmations) {
+      _handled = true;
+      await _controller.stop();
+
+      if (!mounted) return;
+      Navigator.pop(context, value);
+    }
+  }
+
+  void _resetTracking() {
+    _lastCode = null;
+    _confirmations = 0;
   }
 
   @override
@@ -93,9 +113,21 @@ class _BarcodeScannerPageState extends State<BarcodeScannerPage> {
       body: Stack(
         fit: StackFit.expand,
         children: [
-          MobileScanner(
-            controller: _controller,
-            onDetect: _onDetect,
+          LayoutBuilder(
+            builder: (context, constraints) {
+              final scanWindow = Rect.fromCenter(
+                center: constraints.biggest.center(Offset.zero),
+                width: 270,
+                height: 150,
+              );
+
+              return MobileScanner(
+                controller: _controller,
+                fit: BoxFit.cover,
+                scanWindow: scanWindow,
+                onDetect: _onDetect,
+              );
+            },
           ),
           IgnorePointer(
             child: Column(
@@ -104,13 +136,27 @@ class _BarcodeScannerPageState extends State<BarcodeScannerPage> {
                 Row(
                   children: [
                     Expanded(child: Container(color: Colors.black.withValues(alpha: 0.55))),
-                    Container(
-                      width: 270,
-                      height: 150,
-                      decoration: BoxDecoration(
-                        border: Border.all(color: colors.accent, width: 2),
-                        borderRadius: BorderRadius.circular(16),
-                      ),
+                    Stack(
+                      alignment: Alignment.center,
+                      children: [
+                        Container(
+                          width: 270,
+                          height: 150,
+                          decoration: BoxDecoration(
+                            border: Border.all(
+                              color: colors.accent,
+                              width: 2,
+                            ),
+                            borderRadius: BorderRadius.circular(16),
+                          ),
+                        ),
+
+                        Container(
+                          width: 240,
+                          height: 2,
+                          color: Colors.redAccent,
+                        ),
+                      ],
                     ),
                     Expanded(child: Container(color: Colors.black.withValues(alpha: 0.55))),
                   ],
@@ -136,18 +182,37 @@ class _BarcodeScannerPageState extends State<BarcodeScannerPage> {
 }
 
 // Validar EAN-13
-bool _isValidEan13(String code) {
-  if (code.length != 13) return false;
+bool _isValidBarcode(String code, BarcodeFormat format) {
+  int digitAt(String code, int index) => code.codeUnitAt(index) - 48;
 
-  final digits = code.split('').map(int.parse).toList();
+  switch (format) {
+    case BarcodeFormat.ean13:
+      if (code.length != 13) return false;
+      int sum = 0;
 
-  int sum = 0;
+      for (int i = 0; i < 12; i++) {
+        sum += digitAt(code, i) * (i.isEven ? 1 : 3);
+      }
 
-  for (int i = 0; i < 12; i++) {
-    sum += digits[i] * (i.isEven ? 1 : 3);
+      final checkDigit = (10 - (sum % 10)) % 10;
+      return checkDigit == digitAt(code, 12);
+
+    case BarcodeFormat.ean8:
+      if (code.length != 8) return false;
+      int sum = 0;
+
+      for (int i = 0; i < 7; i++) {
+        sum += digitAt(code, i) * (i.isEven ? 3 : 1);
+      }
+
+      final checkDigit = (10 - (sum % 10)) % 10;
+      return checkDigit == digitAt(code, 7);
+
+    case BarcodeFormat.code128:
+      if (code.isEmpty || code.length > 48) return false;
+      return code.codeUnits.every((u) => u >= 32 && u <= 126);
+
+    default:
+      return false;
   }
-
-  final checkDigit = (10 - (sum % 10)) % 10;
-
-  return checkDigit == digits[12];
 }

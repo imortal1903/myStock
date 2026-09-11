@@ -6,119 +6,134 @@ import '../models/categoria.dart';
 import '../repositories/produto_repository.dart';
 import '../repositories/lote_repository.dart';
 import '../repositories/categoria_repository.dart';
-import '../../../core/notifications/notification_scheduler.dart';
+import '../../../core/notificacoes/notificacao_scheduler.dart';
 import '../../../core/extensions/date_extensions.dart';
+import '../../../core/extensions/num_parsing_extensions.dart';
+import '../../../core/validators/produto_validators.dart';
+import '../../../core/viewmodels/base_viewmodel.dart';
 
-enum InsertStatus { idle, loading, success, error }
-
-class InsertViewModel extends ChangeNotifier {
-  final ProdutoRepository  _produtoRepo;
-  final LoteRepository     _loteRepo;
+class InsertViewModel extends BaseViewModel {
+  final ProdutoRepository _produtoRepo;
+  final LoteRepository _loteRepo;
   final CategoriaRepository _catRepo;
 
   InsertViewModel({
-    ProdutoRepository?  produtoRepo,
-    LoteRepository?     loteRepo,
+    ProdutoRepository? produtoRepo,
+    LoteRepository? loteRepo,
     CategoriaRepository? catRepo,
   })  : _produtoRepo = produtoRepo ?? ProdutoRepository(),
-        _loteRepo    = loteRepo    ?? LoteRepository(),
-        _catRepo     = catRepo     ?? CategoriaRepository() {
+        _loteRepo = loteRepo ?? LoteRepository(),
+        _catRepo = catRepo ?? CategoriaRepository() {
     _loadCategorias();
   }
 
-  // ── Form keys ──────────────────────────────────────────────────────────────
-
+  // ── Form keys ──
   final produtoFormKey = GlobalKey<FormState>();
-  final loteFormKey    = GlobalKey<FormState>();
+  final loteFormKey = GlobalKey<FormState>();
 
-  // ── Produto fields ─────────────────────────────────────────────────────────
+  // ── Produto ──
+  String nome = '';
+  String descricao = '';
+  String codigoBarras = '';
+  String estoqueMinText = '';
+  String unidade = 'un';
+  int? categoriaId;
 
-  String  nome           = '';
-  String  descricao      = '';
-  String  codigoBarras   = '';
-  String  estoqueMinText = '';
-  String  unidade        = 'un';
-  int?    categoriaId;
-
-  // ── Lote fields ────────────────────────────────────────────────────────────
-
-  String    numeroLote      = '';
-  String    quantidadeText  = '';
-  String    precoCustoText  = '';
+  // ── Lote ──
+  String numeroLote = '';
+  String quantidadeText = '';
+  String precoCustoText = '';
+  String precoVendaText = '';
   DateTime? dataFabricacao;
   DateTime? dataValidade;
-  DateTime  dataEntrada     = DateTime.now();
-
-  // ── State ──────────────────────────────────────────────────────────────────
+  DateTime dataEntrada = DateTime.now();
 
   List<Categoria> _categorias = [];
-  InsertStatus    _status     = InsertStatus.idle;
-  String?         _errorMessage;
-
   String? _codigoBarrasDuplicado;
 
-  List<Categoria> get categorias    => List.unmodifiable(_categorias);
-  InsertStatus    get status        => _status;
-  String?         get errorMessage  => _errorMessage;
-  bool            get isLoading     => _status == InsertStatus.loading;
-
-  // ── Load categorias ────────────────────────────────────────────────────────
+  List<Categoria> get categorias => List.unmodifiable(_categorias);
 
   Future<void> _loadCategorias() async {
     try {
       _categorias = await _catRepo.getAll();
-      notifyListeners();
-    } catch (_) {}
-  }
-
-  // ── Setters ────────────────────────────────────────────────────────────────
-
-  void setUnidade(String u)          { unidade = u; notifyListeners(); }
-  void setCategoria(int? id)         { categoriaId = id; notifyListeners(); }
-  void setDataValidade(DateTime d)   { dataValidade = d; notifyListeners(); }
-  void setDataFabricacao(DateTime d) { dataFabricacao = d; notifyListeners(); }
-  void setDataEntrada(DateTime d)    { dataEntrada = d; notifyListeners(); }
-
-  // ── Validators ─────────────────────────────────────────────────────────────
-
-  String? validateNome(String? v) {
-    if(v == null || v.trim().isEmpty) return 'Informe o nome';
-    if(v.trim().length < 2) return 'Mínimo 2 caracteres';
-    return null;
-  }
-
-  String? validateCodigoBarras(String? v) {
-    if (v != null && v.trim().isNotEmpty && v.trim() == _codigoBarrasDuplicado) {
-      return 'Este código de barras já está cadastrado.';
+      safeNotify();
+    } catch (_) {
+      // categorias são opcionais: falha silenciosa é aceitável aqui
     }
-    return null;
   }
 
-  String? validateEstoqueMin(String? v) {
-    if (v != null && v.trim().isNotEmpty) {
-      final n = int.tryParse(v.trim());
-      if (n == null || n < 0) return 'Valor inválido';
+  // ── Setters produto ──
+  void setUnidade(String u) {
+    unidade = u;
+    safeNotify();
+  }
+
+  void setCategoria(int? id) {
+    categoriaId = id;
+    safeNotify();
+  }
+
+  void setCodigoBarras(String v) {
+    codigoBarras = v;
+    safeNotify();
+  }
+
+  // ── Setters lote (mantêm temDadosLote sempre atualizado) ──
+  void setNumeroLote(String v) => _updateLoteField(() => numeroLote = v);
+  void setQuantidade(String v) => _updateLoteField(() => quantidadeText = v);
+  void setPrecoCusto(String v) => _updateLoteField(() => precoCustoText = v);
+  void setPrecoVenda(String v) => _updateLoteField(() => precoVendaText = v);
+
+  void setDataValidade(DateTime d) => _updateLoteField(() => dataValidade = d);
+  void setDataFabricacao(DateTime d) =>
+      _updateLoteField(() => dataFabricacao = d);
+
+  void setDataEntrada(DateTime d) {
+    dataEntrada = d;
+    safeNotify();
+  }
+
+  void _updateLoteField(VoidCallback apply) {
+    final antes = temDadosLote;
+    apply();
+    // Revalida o form do lote quando o "modo lote" liga/desliga,
+    // para limpar/exibir os erros condicionais.
+    if (antes != temDadosLote) {
+      loteFormKey.currentState?.validate();
     }
-    return null;
+    safeNotify();
   }
 
-  String? validateQuantidade(String? v) {
-    if(!temDadosLote) return null;
-    if(v == null || v.trim().isEmpty)return 'Informe a quantidade';
-    final n = int.tryParse(v.trim());
-    if(n == null || n < 0) return 'Quantidade inválida';
-    return null;
-  }
+  bool get temDadosLote =>
+      numeroLote.trim().isNotEmpty ||
+          quantidadeText.trim().isNotEmpty ||
+          precoCustoText.trim().isNotEmpty ||
+          precoVendaText.trim().isNotEmpty ||
+          dataValidade != null ||
+          dataFabricacao != null;
 
-  String? validatePrecoCusto(String? v) {
-    if (v == null || v.trim().isEmpty) return null;
-    final n = double.tryParse(v.replaceAll(',', '.'));
-    if (n == null || n < 0) return 'Preço inválido';
-    return null;
-  }
+  // ── Validators ──
+  String? validateNome(String? v) => ProdutoValidators.nome(v);
 
-  // ── Save ───────────────────────────────────────────────────────────────────
+  String? validateCodigoBarras(String? v) =>
+      ProdutoValidators.codigoBarras(v, duplicado: _codigoBarrasDuplicado);
 
+  String? validateEstoqueMin(String? v) =>
+      ProdutoValidators.inteiroOpcional(v);
+
+  String? validateQuantidade(String? v) =>
+      temDadosLote ? ProdutoValidators.quantidade(v) : null;
+
+  String? validatePrecoCusto(String? v) => temDadosLote
+      ? ProdutoValidators.preco(v, label: 'preço de custo')
+      : null;
+
+  String? validatePrecoVenda(String? v) => temDadosLote
+      ? ProdutoValidators.preco(v,
+      label: 'preço de venda', maiorQueZero: true)
+      : null;
+
+  // ── Save ──
   Future<bool> save() async {
     final codigo = codigoBarras.trim();
     _codigoBarrasDuplicado = null;
@@ -126,113 +141,93 @@ class InsertViewModel extends ChangeNotifier {
       _codigoBarrasDuplicado = codigo;
     }
 
-    final produtoOk = produtoFormKey.currentState?.validate() ?? false;
-
-    if (!produtoOk) return false;
-
-    bool loteOk = true;
+    if (!(produtoFormKey.currentState?.validate() ?? false)) return false;
 
     if (temDadosLote) {
-      loteOk = loteFormKey.currentState?.validate() ?? false;
-
+      if (!(loteFormKey.currentState?.validate() ?? false)) return false;
       if (dataValidade == null) {
-        _errorMessage = 'Selecione a data de validade do lote';
-        notifyListeners();
+        setStatus(ViewStatus.error,
+            error: 'Selecione a data de validade do lote');
         return false;
       }
     }
 
-    if (!loteOk) return false;
-
     produtoFormKey.currentState?.save();
     loteFormKey.currentState?.save();
 
-    _status = InsertStatus.loading;
-    _errorMessage = null;
-    notifyListeners();
-
-    try {
-      // ── Salva produto ─────────────────────────────
-      final produtoId = await _produtoRepo.insert(
-        Produto(
-          nome: nome.trim(),
-          descricao: descricao.trim().isEmpty ? null : descricao.trim(),
-          codigoBarras: codigoBarras.trim().isEmpty ? null : codigoBarras.trim(),
-          estoqueMin: estoqueMinText.trim().isEmpty ? null : int.tryParse(estoqueMinText.trim()),
-          categoriaId: categoriaId,
-          unidade: unidade,
-          criadoEm: DateTime.now(),
-        ),
-      );
-
-      // ── Salva lote APENAS se preenchido ───────────
-      if (temDadosLote) {
-        final quantidade = int.tryParse(quantidadeText.trim()) ?? 0;
-
-        LoteStatus statusLote = LoteStatus.ativo;
-        if (dataValidade!.isBeforeDate(DateTime.now())) {
-          statusLote = LoteStatus.vencido;
-        } else if (quantidade <= 0) {
-          statusLote = LoteStatus.esgotado;
-        }
-
-        await _loteRepo.insert(
-          Lote(
-            produtoId: produtoId,
-            numeroLote: numeroLote.trim().isEmpty ? null : numeroLote.trim(),
-            quantidade: quantidade,
-            precoCusto: precoCustoText.trim().isEmpty
-                ? null
-                : double.parse(precoCustoText.replaceAll(',', '.')),
-            dataFabricacao: dataFabricacao,
-            dataValidade: dataValidade!,
-            dataEntrada: dataEntrada,
-            status: statusLote,
+    final ok = await run<bool>(
+          () async {
+        final produtoId = await _produtoRepo.insert(
+          Produto(
+            nome: nome.trim(),
+            descricao: descricao.nullIfEmpty,
+            codigoBarras: codigoBarras.nullIfEmpty,
+            estoqueMin: estoqueMinText.toIntOrNull(),
+            categoriaId: categoriaId,
+            unidade: unidade,
             criadoEm: DateTime.now(),
           ),
         );
-      }
 
-      await NotificationScheduler.reschedule();
+        if (temDadosLote) {
+          final quantidade = quantidadeText.toDoubleOrZero();
 
-      _status = InsertStatus.success;
-      notifyListeners();
+          final statusLote = dataValidade!.isBeforeDate(DateTime.now())
+              ? LoteStatus.vencido
+              : (quantidade <= 0 ? LoteStatus.esgotado : LoteStatus.ativo);
 
-      return true;
-    } catch (e) {
-      _status = InsertStatus.error;
+          // Lote.novo() em vez de Lote() direto: preenche
+          // quantidadeInicial automaticamente a partir de `quantidade`,
+          // já que este é sempre um lote recém-criado aqui.
+          await _loteRepo.insert(
+            Lote.novo(
+              produtoId: produtoId,
+              numeroLote: numeroLote.nullIfEmpty,
+              quantidade: quantidade,
+              precoCusto: precoCustoText.toDoubleOrZero(),
+              precoVenda: precoVendaText.toDoubleOrZero(),
+              dataFabricacao: dataFabricacao,
+              dataValidade: dataValidade!,
+              dataEntrada: dataEntrada,
+              status: statusLote,
+              criadoEm: DateTime.now(),
+            ),
+          );
+        }
 
-      if (e is CodigoBarrasDuplicadoException) {
-       _codigoBarrasDuplicado = e.codigoBarras;
-        produtoFormKey.currentState?.validate();
-      } else {
-        _errorMessage = 'Erro ao salvar: $e';
-      }
+        await NotificacaoScheduler.reschedule();
+        return true;
+      },
+      onError: (e) {
+        if (e is CodigoBarrasDuplicadoException) {
+          _codigoBarrasDuplicado = e.codigoBarras;
+          produtoFormKey.currentState?.validate();
+          return 'Este código de barras já está cadastrado.';
+        }
+        return 'Erro ao salvar: $e';
+      },
+    );
 
-      notifyListeners();
-
-      return false;
-    }
+    return ok ?? false;
   }
 
   void reset() {
-    nome = ''; descricao = ''; codigoBarras = ''; estoqueMinText = '';
-    unidade = 'un'; categoriaId = null;
-    numeroLote = ''; quantidadeText = ''; precoCustoText = '';
-    dataFabricacao = null; dataValidade = null;
+    nome = '';
+    descricao = '';
+    codigoBarras = '';
+    estoqueMinText = '';
+    unidade = 'un';
+    categoriaId = null;
+    numeroLote = '';
+    quantidadeText = '';
+    precoCustoText = '';
+    precoVendaText = '';
+    dataFabricacao = null;
+    dataValidade = null;
     dataEntrada = DateTime.now();
-    _status = InsertStatus.idle; _errorMessage = null;
     _codigoBarrasDuplicado = null;
     produtoFormKey.currentState?.reset();
     loteFormKey.currentState?.reset();
-    notifyListeners();
-  }
-
-  bool get temDadosLote {
-    return numeroLote.trim().isNotEmpty ||
-        quantidadeText.trim().isNotEmpty ||
-        precoCustoText.trim().isNotEmpty ||
-        dataValidade != null ||
-        dataFabricacao != null;
+    setStatus(ViewStatus.idle);
   }
 }

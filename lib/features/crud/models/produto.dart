@@ -79,6 +79,15 @@ class Produto {
       );
 
   static const unidades = ['kg', 'g', 'L', 'mL', 'un', 'cx', 'pct'];
+
+  /// Unidades cuja venda pode ser fracionada (quantidades decimais, ex.:
+  /// 1,5 kg ou 10,5 g). Fora desse conjunto (un, cx, pct) a quantidade
+  /// vendida/movimentada precisa ser sempre um número inteiro — não existe
+  /// "meio pacote" ou "meia unidade".
+  static const unidadesFracionaveis = {'kg', 'g', 'L', 'mL'};
+
+  /// true se esta unidade aceita quantidades fracionadas na venda/estoque.
+  bool get permiteFracao => unidadesFracionaveis.contains(unidade);
 }
 
 const Object _unset = Object();

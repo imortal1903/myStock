@@ -1,115 +1,103 @@
-import 'package:flutter/material.dart';
-
 import '../models/produto.dart';
 import '../models/lote.dart';
 import '../repositories/produto_repository.dart';
 import '../repositories/lote_repository.dart';
-import '../../../core/notifications/notification_scheduler.dart';
+import '../../../core/notificacoes/notificacao_scheduler.dart';
+import '../../../core/viewmodels/base_viewmodel.dart';
 
-enum DeleteStatus { idle, loading, success, error }
-
-class DeleteViewModel extends ChangeNotifier {
+class DeleteViewModel extends BaseViewModel {
   final ProdutoRepository _produtoRepo;
-  final LoteRepository    _loteRepo;
+  final LoteRepository _loteRepo;
 
-  DeleteViewModel({ProdutoRepository? produtoRepo, LoteRepository? loteRepo})
-      : _produtoRepo = produtoRepo ?? ProdutoRepository(),
-        _loteRepo    = loteRepo    ?? LoteRepository() {
+  DeleteViewModel({
+    ProdutoRepository? produtoRepo,
+    LoteRepository? loteRepo,
+    Produto? initialProduto,
+  })  : _produtoRepo = produtoRepo ?? ProdutoRepository(),
+        _loteRepo = loteRepo ?? LoteRepository(),
+        abriuComProdutoEspecifico = initialProduto != null {
     loadProdutos();
+    if (initialProduto != null) selectProduto(initialProduto);
   }
 
-  // ── State ──────────────────────────────────────────────────────────────────
+  /// Verdadeiro quando a tela foi aberta direto para um produto específico.
+  final bool abriuComProdutoEspecifico;
 
-  List<Produto>  _produtos       = [];
-  List<Lote>     _lotes          = [];
-  Produto?       _selectedProduto;
-  DeleteStatus   _status         = DeleteStatus.idle;
-  String?        _errorMessage;
-  String?        _lastDeletedNome;
+  List<Produto> _produtos = [];
+  List<Lote> _lotes = [];
+  Produto? _selectedProduto;
+  String? _lastDeletedNome;
 
-  // ── Getters ────────────────────────────────────────────────────────────────
-
-  List<Produto>  get produtos         => List.unmodifiable(_produtos);
-  List<Lote>     get lotes            => List.unmodifiable(_lotes);
-  Produto?       get selectedProduto  => _selectedProduto;
-  DeleteStatus   get status           => _status;
-  String?        get errorMessage     => _errorMessage;
-  String?        get lastDeletedNome  => _lastDeletedNome;
-  bool           get isLoading        => _status == DeleteStatus.loading;
-
-  // ── Load ───────────────────────────────────────────────────────────────────
+  List<Produto> get produtos => List.unmodifiable(_produtos);
+  List<Lote> get lotes => List.unmodifiable(_lotes);
+  Produto? get selectedProduto => _selectedProduto;
+  String? get lastDeletedNome => _lastDeletedNome;
 
   Future<void> loadProdutos() async {
-    _status = DeleteStatus.loading; _errorMessage = null;
-    notifyListeners();
-    try {
-      _produtos = await _produtoRepo.search('');
-      _status   = DeleteStatus.idle;
-    } catch (e) {
-      _status = DeleteStatus.error; _errorMessage = 'Erro: $e';
-    } finally {
-      notifyListeners();
-    }
+    await run<void>(
+          () async => _produtos = await _produtoRepo.search(''),
+      onError: (e) => 'Erro: $e',
+      markSuccess: false,
+    );
   }
 
   Future<void> selectProduto(Produto p) async {
     _selectedProduto = p;
-    _lotes = await _loteRepo.getByProduto(p.id!);
-    notifyListeners();
+    _lotes = [];
+    safeNotify();
+
+    await run<void>(
+          () async => _lotes = await _loteRepo.getByProduto(p.id!),
+      onError: (e) => 'Erro ao carregar lotes: $e',
+      markSuccess: false,
+    );
   }
 
   void clearSelection() {
     _selectedProduto = null;
     _lotes = [];
-    notifyListeners();
+    safeNotify();
   }
-
-  // ── Delete Lote ────────────────────────────────────────────────────────────
 
   Future<void> deleteLote(int loteId) async {
-    _status = DeleteStatus.loading; _errorMessage = null;
-    notifyListeners();
-    try {
-      await _loteRepo.delete(loteId);
-      _lotes.removeWhere((l) => l.id == loteId);
-      await NotificationScheduler.reschedule();
-      _status = DeleteStatus.success;
-    } catch (e) {
-      _status = DeleteStatus.error; _errorMessage = 'Erro ao remover lote: $e';
-    } finally {
-      notifyListeners();
-    }
+    await run<void>(
+          () async {
+        await _loteRepo.delete(loteId);
+        _lotes.removeWhere((l) => l.id == loteId);
+        await NotificacaoScheduler.reschedule();
+      },
+      onError: (e) => 'Erro ao remover lote: $e',
+    );
   }
 
-  // ── Delete Produto ─────────────────────────────────────────────────────────
-
+  /// Desativa o produto (soft delete). Os lotes são preservados para não
+  /// violar chaves estrangeiras de movimentações/vendas.
   Future<void> deleteProduto(int produtoId) async {
-    final target = _produtos.firstWhere((p) => p.id == produtoId);
-
-    _status = DeleteStatus.loading; _errorMessage = null;
-    notifyListeners();
-    try {
-      // CORREÇÃO: Removido o for-loop que apagava os lotes fisicamente.
-      // Como o produto está apenas sendo desativado, forçar a exclusão dos
-      // lotes causaria um erro de Foreign Key caso houvesse movimentações ou vendas.
-      await _produtoRepo.deactivate(produtoId);
-
-      _lastDeletedNome = target.nome;
-      _produtos.removeWhere((p) => p.id == produtoId);
-      _selectedProduto = null;
-      _lotes = [];
-
-      await NotificationScheduler.reschedule();
-      _status = DeleteStatus.success;
-    } catch (e) {
-      _status = DeleteStatus.error; _errorMessage = 'Erro ao remover produto: $e';
-    } finally {
-      notifyListeners();
+    Produto? target;
+    for (final p in _produtos) {
+      if (p.id == produtoId) {
+        target = p;
+        break;
+      }
     }
+    target ??= _selectedProduto;
+
+    await run<void>(
+          () async {
+        await _produtoRepo.deactivate(produtoId);
+        _lastDeletedNome = target?.nome;
+        _produtos.removeWhere((p) => p.id == produtoId);
+        _selectedProduto = null;
+        _lotes = [];
+        await NotificacaoScheduler.reschedule();
+      },
+      onError: (e) => 'Erro ao remover produto: $e',
+    );
   }
 
+  @override
   void resetStatus() {
-    _status = DeleteStatus.idle; _errorMessage = null; _lastDeletedNome = null;
-    notifyListeners();
+    _lastDeletedNome = null;
+    super.resetStatus();
   }
 }

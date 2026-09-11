@@ -4,17 +4,24 @@ import 'package:provider/provider.dart';
 
 import 'core/theme/color_palette.dart';
 import 'core/theme/theme_controller.dart';
+import 'core/backup/backup_scheduler.dart';
 
 import 'features/crud/viewmodels/home_viewmodel.dart';
 import 'features/crud/views/home_page.dart';
 
-import 'features/settings/repositories/settings_repository.dart';
-import 'features/settings/viewmodels/settings_viewmodel.dart';
+import 'features/config/repositories/config_repository.dart';
+import 'features/config/viewmodels/config_viewmodel.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  final settingsRepository = SettingsRepository();
+  // Registra o callback do backup automático em segundo plano junto ao
+  // WorkManager. Precisa rodar antes do runApp() — é o que permite o
+  // agendamento feito em BackupViewModel.ativar()/definirHorario()
+  // funcionar mesmo com o app fechado.
+  await BackupScheduler.inicializar();
+
+  final settingsRepository = ConfigRepository();
   final settings = await settingsRepository.carregar();
 
   runApp(
@@ -25,8 +32,8 @@ Future<void> main() async {
   );
 }
 
-class MyStockApp extends StatelessWidget {
-  final SettingsRepository settingsRepository;
+class MyStockApp extends StatefulWidget {
+  final ConfigRepository settingsRepository;
   final ThemeMode themeModeInicial;
 
   const MyStockApp({
@@ -34,6 +41,38 @@ class MyStockApp extends StatelessWidget {
     required this.settingsRepository,
     required this.themeModeInicial,
   });
+
+  @override
+  State<MyStockApp> createState() => _MyStockAppState();
+}
+
+class _MyStockAppState extends State<MyStockApp> with WidgetsBindingObserver {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    // "paused" = o app saiu de primeiro plano (usuário trocou de app,
+    // apertou home, ou está fechando de fato). Não dá pra distinguir com
+    // certeza uma troca rápida de um fechamento definitivo — por isso só
+    // ENFILEIRAMOS a tentativa aqui (BackupScheduler.agendarAoFechar()
+    // decide, lendo a config salva, se o backup está ativado; e o próprio
+    // WorkManager evita empilhar tentativas repetidas). Nunca fazemos a
+    // chamada de rede diretamente neste callback — o processo pode ser
+    // suspenso pelo Android antes dela terminar.
+    if (state == AppLifecycleState.paused) {
+      BackupScheduler.agendarAoFechar();
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -44,18 +83,18 @@ class MyStockApp extends StatelessWidget {
         ),
 
         ChangeNotifierProvider(
-          create: (_) => ThemeController(themeModeInicial),
+          create: (_) => ThemeController(widget.themeModeInicial),
         ),
 
-        ChangeNotifierProxyProvider<ThemeController, SettingsViewModel>(
-          create: (context) => SettingsViewModel(
-            repository: settingsRepository,
+        ChangeNotifierProxyProvider<ThemeController, ConfigViewModel>(
+          create: (context) => ConfigViewModel(
+            repository: widget.settingsRepository,
             themeController: context.read<ThemeController>(),
           ),
           update: (context, themeController, previous) =>
           previous ??
-              SettingsViewModel(
-                repository: settingsRepository,
+              ConfigViewModel(
+                repository: widget.settingsRepository,
                 themeController: themeController,
               ),
         ),

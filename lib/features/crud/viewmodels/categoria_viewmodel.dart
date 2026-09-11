@@ -2,10 +2,10 @@ import 'package:flutter/material.dart';
 
 import '../models/categoria.dart';
 import '../repositories/categoria_repository.dart';
+import '../../../core/validators/produto_validators.dart';
+import '../../../core/viewmodels/base_viewmodel.dart';
 
-enum CategoriaStatus { idle, loading, success, error }
-
-class CategoriaViewModel extends ChangeNotifier {
+class CategoriaViewModel extends BaseViewModel {
   final CategoriaRepository _repo;
 
   CategoriaViewModel({CategoriaRepository? repo})
@@ -13,151 +13,93 @@ class CategoriaViewModel extends ChangeNotifier {
     loadCategorias();
   }
 
-  // ── Form key ───────────────────────────────────────────────────────────────
-
   final formKey = GlobalKey<FormState>();
-
-  // ── Campo do formulário ───────────────────────────────────────────────────
 
   String nome = '';
 
-  // ── State ──────────────────────────────────────────────────────────────────
-
   List<Categoria> _categorias = [];
-  Categoria?      _selected;
-  CategoriaStatus _status = CategoriaStatus.idle;
-  String?         _errorMessage;
+  Categoria? _selected;
 
-  // ── Getters ────────────────────────────────────────────────────────────────
-
-  List<Categoria> get categorias   => List.unmodifiable(_categorias);
-  Categoria?      get selected     => _selected;
-  CategoriaStatus get status       => _status;
-  String?         get errorMessage => _errorMessage;
-  bool            get isLoading    => _status == CategoriaStatus.loading;
-  bool            get isEditing    => _selected != null;
-
-  // ── Load ───────────────────────────────────────────────────────────────────
+  List<Categoria> get categorias => List.unmodifiable(_categorias);
+  Categoria? get selected => _selected;
+  bool get isEditing => _selected != null;
 
   Future<void> loadCategorias() async {
-    _status = CategoriaStatus.loading;
-    _errorMessage = null;
-    notifyListeners();
-    try {
-      _categorias = await _repo.getAll();
-      _status = CategoriaStatus.idle;
-    } catch (e) {
-      _status = CategoriaStatus.error;
-      _errorMessage = 'Erro ao carregar categorias: $e';
-    } finally {
-      notifyListeners();
-    }
+    await run<void>(
+          () async => _categorias = await _repo.getAll(),
+      onError: (e) => 'Erro ao carregar categorias: $e',
+      markSuccess: false,
+    );
   }
-
-  // ── Preparação do formulário ──────────────────────────────────────────────
 
   void selectForEdit(Categoria c) {
     _selected = c;
     nome = c.nome;
-    _errorMessage = null;
-    notifyListeners();
+    setStatus(ViewStatus.idle);
   }
 
   void startNew() {
     _selected = null;
     nome = '';
-    _errorMessage = null;
     formKey.currentState?.reset();
-    notifyListeners();
+    setStatus(ViewStatus.idle);
   }
 
-  void cancelEdit() {
-    _selected = null;
-    nome = '';
-    _errorMessage = null;
-    notifyListeners();
-  }
-
-  // ── Validators ─────────────────────────────────────────────────────────────
+  void cancelEdit() => startNew();
 
   String? validateNome(String? v) {
-    if (v == null || v.trim().isEmpty) return 'Informe o nome';
-    if (v.trim().length < 2) return 'Mínimo 2 caracteres';
+    final base = ProdutoValidators.nome(v);
+    if (base != null) return base;
 
-    final duplicada = _categorias.any((c) =>
-    c.id != _selected?.id &&
-        c.nome.trim().toLowerCase() == v.trim().toLowerCase());
-    if (duplicada) return 'Já existe uma categoria com esse nome';
-
-    return null;
+    final alvo = v!.trim().toLowerCase();
+    final duplicada = _categorias.any(
+          (c) => c.id != _selected?.id && c.nome.trim().toLowerCase() == alvo,
+    );
+    return duplicada ? 'Já existe uma categoria com esse nome' : null;
   }
-
-  // ── Save (insert ou update) ───────────────────────────────────────────────
 
   Future<bool> save() async {
-    final ok = formKey.currentState?.validate() ?? false;
-    if (!ok) return false;
+    if (!(formKey.currentState?.validate() ?? false)) return false;
     formKey.currentState?.save();
 
-    _status = CategoriaStatus.loading;
-    _errorMessage = null;
-    notifyListeners();
-
-    try {
-      if (_selected == null) {
-        final nova = Categoria(nome: nome.trim(), criadoEm: DateTime.now());
-        await _repo.insert(nova);
-      } else {
-        final atualizada = _selected!.copyWith(nome: nome.trim());
-        await _repo.update(atualizada);
-      }
-
-      await loadCategorias();
-      _selected = null;
-      nome = '';
-      _status = CategoriaStatus.success;
-      notifyListeners();
-      return true;
-    } catch (e) {
-      _status = CategoriaStatus.error;
-      _errorMessage = 'Erro ao salvar categoria: $e';
-      notifyListeners();
-      return false;
-    }
-  }
-
-  // ── Delete ─────────────────────────────────────────────────────────────────
-  // Observação: se "categorias" tiver FK com "produtos" (categoria_id), o
-  // delete falha quando houver produtos vinculados. Trate esse erro na UI.
-
-  Future<bool> delete(int id) async {
-    _status = CategoriaStatus.loading;
-    _errorMessage = null;
-    notifyListeners();
-
-    try {
-      await _repo.detachInactiveProducts(id);
-      await _repo.delete(id);
-      _categorias.removeWhere((c) => c.id == id);
-      if (_selected?.id == id) {
+    final ok = await run<bool>(
+          () async {
+        if (_selected == null) {
+          await _repo.insert(
+            Categoria(nome: nome.trim(), criadoEm: DateTime.now()),
+          );
+        } else {
+          await _repo.update(_selected!.copyWith(nome: nome.trim()));
+        }
+        _categorias = await _repo.getAll();
         _selected = null;
         nome = '';
-      }
-      _status = CategoriaStatus.success;
-      return true;
-    } catch (e) {
-      _status = CategoriaStatus.error;
-      _errorMessage = 'Não foi possível excluir. Verifique se há produtos '
-          'vinculados a esta categoria.';
-      return false;
-    } finally {
-      notifyListeners();
-    }
+        return true;
+      },
+      onError: (e) => 'Erro ao salvar categoria: $e',
+    );
+
+    return ok ?? false;
   }
 
-  void resetStatus() {
-    _status = CategoriaStatus.idle;
-    _errorMessage = null;
-    notifyListeners();
+  /// Remove a categoria. Produtos inativos são desvinculados antes.
+  /// Falha se ainda houver produtos ativos vinculados.
+  Future<bool> delete(int id) async {
+    final ok = await run<bool>(
+          () async {
+        await _repo.detachInactiveProducts(id);
+        await _repo.delete(id);
+        _categorias.removeWhere((c) => c.id == id);
+        if (_selected?.id == id) {
+          _selected = null;
+          nome = '';
+        }
+        return true;
+      },
+      onError: (_) => 'Não foi possível excluir. Verifique se há produtos '
+          'vinculados a esta categoria.',
+    );
+
+    return ok ?? false;
   }
 }

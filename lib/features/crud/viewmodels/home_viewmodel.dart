@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'package:flutter/material.dart';
 
 import '../models/produto.dart';
 import '../models/lote.dart';
@@ -7,40 +6,84 @@ import '../models/categoria.dart';
 import '../repositories/produto_repository.dart';
 import '../repositories/lote_repository.dart';
 import '../repositories/categoria_repository.dart';
+import '../../../core/viewmodels/base_viewmodel.dart';
 
-// Representa um produto com seus lotes para exibição na home
+/// Produto + seus lotes, com os agregados calculados uma única vez.
 class ProdutoComLotes {
-  final Produto     produto;
-  final List<Lote>  lotes;
+  final Produto produto;
+  final List<Lote> lotes;
 
-  const ProdutoComLotes({required this.produto, required this.lotes});
+  final Lote? loteAtivo;
+  final double estoqueTotal;
+  final bool temLoteVencendo;
+  final int qtdAtivos;
+  final int qtdEsgotados;
+  final int qtdVencidos;
+  final double? precoMedioLotes;
 
-  // Lote mais próximo de vencer (ativo)
-  Lote? get loteAtivo {
-    final ativos = lotes.where((l) => l.status == LoteStatus.ativo).toList()
-      ..sort((a, b) => a.dataValidade.compareTo(b.dataValidade));
-    return ativos.isEmpty ? null : ativos.first;
+  ProdutoComLotes._({
+    required this.produto,
+    required this.lotes,
+    required this.loteAtivo,
+    required this.estoqueTotal,
+    required this.temLoteVencendo,
+    required this.qtdAtivos,
+    required this.qtdEsgotados,
+    required this.qtdVencidos,
+    required this.precoMedioLotes,
+  });
+
+  factory ProdutoComLotes({
+    required Produto produto,
+    required List<Lote> lotes,
+  }) {
+    final ativos = <Lote>[];
+    var estoque = 0.0;
+    var vencendo = false;
+    var esgotados = 0;
+    var vencidos = 0;
+    var somaPrecos = 0.0;
+
+    for (final l in lotes) {
+      somaPrecos += l.precoVenda;
+      switch (l.status) {
+        case LoteStatus.ativo:
+          ativos.add(l);
+          estoque += l.quantidade;
+          if (l.diasParaVencer <= 7) vencendo = true;
+        case LoteStatus.esgotado:
+          esgotados++;
+        case LoteStatus.vencido:
+          vencidos++;
+      }
+    }
+
+    ativos.sort((a, b) => a.dataValidade.compareTo(b.dataValidade));
+
+    return ProdutoComLotes._(
+      produto: produto,
+      lotes: lotes,
+      loteAtivo: ativos.isEmpty ? null : ativos.first,
+      estoqueTotal: estoque,
+      temLoteVencendo: vencendo,
+      qtdAtivos: ativos.length,
+      qtdEsgotados: esgotados,
+      qtdVencidos: vencidos,
+      precoMedioLotes: lotes.isEmpty ? null : somaPrecos / lotes.length,
+    );
   }
 
-  int get estoqueTotal =>
-      lotes.where((l) => l.status == LoteStatus.ativo)
-          .fold(0, (s, l) => s + l.quantidade);
-
-  bool get temLoteVencendo =>
-      lotes.any((l) => l.status == LoteStatus.ativo && l.diasParaVencer <= 7);
-
-  int get qtdAtivos    => lotes.where((l) => l.status == LoteStatus.ativo).length;
-  int get qtdEsgotados => lotes.where((l) => l.status == LoteStatus.esgotado).length;
-  int get qtdVencidos  => lotes.where((l) => l.status == LoteStatus.vencido).length;
-
-  // Preço médio considerando apenas os lotes com preço de custo informado.
-  double? get precoMedioLotes {
-    final comPreco = lotes.where((l) => l.precoCusto != null).toList();
-    if (comPreco.isEmpty) return null;
-    final soma = comPreco.fold<double>(0, (s, l) => s + l.precoCusto!);
-    return soma / comPreco.length;
+  /// Valor formatado sozinho — sem rótulo — pra usar onde já existe um
+  /// texto próprio explicando o que é (ex.: "Média de preço" em
+  /// ProdutoDetailPage).
+  String get precoMedioValorFormatado {
+    final media = precoMedioLotes;
+    if (media == null) return 'Sem preço registrado';
+    return 'R\$ ${media.toStringAsFixed(2).replaceAll('.', ',')}';
   }
 
+  /// Com o prefixo "Média:" embutido — pra usar onde o texto aparece
+  /// sozinho, sem rótulo ao lado (ex.: card de produto na HomePage).
   String get precoMedioFormatado {
     final media = precoMedioLotes;
     if (media == null) return 'Sem preço registrado';
@@ -48,46 +91,41 @@ class ProdutoComLotes {
   }
 }
 
-class HomeViewModel extends ChangeNotifier {
-  final ProdutoRepository   _produtoRepo;
-  final LoteRepository      _loteRepo;
+class HomeViewModel extends BaseViewModel {
+  final ProdutoRepository _produtoRepo;
+  final LoteRepository _loteRepo;
   final CategoriaRepository _catRepo;
 
   HomeViewModel({
-    ProdutoRepository?   produtoRepo,
-    LoteRepository?      loteRepo,
+    ProdutoRepository? produtoRepo,
+    LoteRepository? loteRepo,
     CategoriaRepository? catRepo,
   })  : _produtoRepo = produtoRepo ?? ProdutoRepository(),
-        _loteRepo    = loteRepo    ?? LoteRepository(),
-        _catRepo     = catRepo     ?? CategoriaRepository() {
+        _loteRepo = loteRepo ?? LoteRepository(),
+        _catRepo = catRepo ?? CategoriaRepository() {
     _loadCategorias();
     search('');
   }
 
-  // ── State ──────────────────────────────────────────────────────────────────
+  List<ProdutoComLotes> _items = [];
+  List<Categoria> _categorias = [];
+  String _query = '';
+  int? _categoriaFiltroId;
+  int _selectedNavIndex = 0;
+  Timer? _debounce;
 
-  List<ProdutoComLotes>   _items       = [];
-  List<Categoria>         _categorias  = [];
-  bool                    _isLoading  = false;
-  String?                 _error;
-  String                  _query               = '';
-  int?                    _categoriaFiltroId;
-  int                     _selectedCategoryIndex = 0;
-  int                     _selectedNavIndex      = 0;
-  Timer?                  _debounce;
+  /// Evita que uma busca antiga sobrescreva o resultado de uma mais recente.
+  int _searchToken = 0;
 
-  // ── Getters ────────────────────────────────────────────────────────────────
+  List<ProdutoComLotes> get items => List.unmodifiable(_items);
+  List<Categoria> get categorias => List.unmodifiable(_categorias);
+  String get query => _query;
+  int? get categoriaFiltroId => _categoriaFiltroId;
+  int get selectedNavIndex => _selectedNavIndex;
 
-  List<ProdutoComLotes> get items                 => List.unmodifiable(_items);
-  List<Categoria>       get categorias            => List.unmodifiable(_categorias);
-  bool                  get isLoading             => _isLoading;
-  String?               get error                 => _error;
-  String                get query                 => _query;
-  int?                  get categoriaFiltroId     => _categoriaFiltroId;
-  int                   get selectedCategoryIndex => _selectedCategoryIndex;
-  int                   get selectedNavIndex      => _selectedNavIndex;
+  /// Alias mantido para compatibilidade com a UI existente.
+  String? get error => errorMessage;
 
-  /// A categoria atualmente selecionada no filtro, ou null se for "Todas".
   Categoria? get categoriaFiltroSelecionada {
     if (_categoriaFiltroId == null) return null;
     for (final c in _categorias) {
@@ -96,18 +134,14 @@ class HomeViewModel extends ChangeNotifier {
     return null;
   }
 
-  // ── Categorias (para o filtro de busca) ─────────────────────────────────────
-
   Future<void> _loadCategorias() async {
     try {
       _categorias = await _catRepo.getAll();
-      notifyListeners();
+      safeNotify();
     } catch (_) {
-      // Sem categorias cadastradas ainda; o filtro simplesmente não aparece.
+      // Filtro de categoria é opcional.
     }
   }
-
-  // ── Search ─────────────────────────────────────────────────────────────────
 
   void onSearchChanged(String q) {
     _query = q;
@@ -116,34 +150,30 @@ class HomeViewModel extends ChangeNotifier {
   }
 
   Future<void> search(String query) async {
-    _query     = query;
-    _isLoading = true;
-    _error     = null;
-    notifyListeners();
+    _query = query;
+    final token = ++_searchToken;
 
+    setStatus(ViewStatus.loading);
     try {
       final produtos = await _produtoRepo.search(
         query,
         categoriaId: _categoriaFiltroId,
       );
 
-      // Carrega os lotes de cada produto em paralelo
-      final futures = produtos.map((p) async {
+      final result = await Future.wait(produtos.map((p) async {
         final lotes = await _loteRepo.getByProduto(p.id!);
         return ProdutoComLotes(produto: p, lotes: lotes);
-      });
+      }));
 
-      _items = await Future.wait(futures);
+      if (token != _searchToken) return; // resultado obsoleto
+      _items = result;
+      setStatus(ViewStatus.idle);
     } catch (e) {
-      _error = 'Erro ao buscar produtos: $e';
-    } finally {
-      _isLoading = false;
-      notifyListeners();
+      if (token != _searchToken) return;
+      setStatus(ViewStatus.error, error: 'Erro ao buscar produtos: $e');
     }
   }
 
-  /// Filtra a busca por categoria, mantendo o texto pesquisado.
-  /// Passe `null` para voltar a mostrar todas as categorias.
   Future<void> filtrarPorCategoria(int? categoriaId) async {
     if (_categoriaFiltroId == categoriaId) return;
     _categoriaFiltroId = categoriaId;
@@ -155,17 +185,10 @@ class HomeViewModel extends ChangeNotifier {
     await search(_query);
   }
 
-  // ── Nav ────────────────────────────────────────────────────────────────────
-
-  void selectCategory(int i) {
-    _selectedCategoryIndex = i;
-    notifyListeners();
-  }
-
   void selectNav(int i) {
     if (_selectedNavIndex == i) return;
     _selectedNavIndex = i;
-    notifyListeners();
+    safeNotify();
   }
 
   @override

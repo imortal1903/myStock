@@ -1,5 +1,5 @@
 class EstoqueResumo {
-  final int quantidadeAtiva;
+  final double quantidadeAtiva;
   final bool temLoteVencido;
 
   const EstoqueResumo({
@@ -8,7 +8,7 @@ class EstoqueResumo {
   });
 
   /// Sem nenhum lote cadastrado ainda.
-  static const vazio = EstoqueResumo(quantidadeAtiva: 0, temLoteVencido: false);
+  static const vazio = EstoqueResumo(quantidadeAtiva: 0.0, temLoteVencido: false);
 
   bool get disponivel => quantidadeAtiva > 0;
 
