@@ -1,12 +1,13 @@
-<div>
+<div align="center">
 
 # myStock
 
-**Gestão de estoque gratuita e offline para micro e pequenas empresas**
+**Gestão de estoque e vendas gratuita para micro e pequenas empresas, que funciona offline**
 
 ![Flutter](https://img.shields.io/badge/Flutter-3.x-02569B?logo=flutter)
 ![Dart](https://img.shields.io/badge/Dart-3.x-0175C2?logo=dart)
 ![SQLite](https://img.shields.io/badge/SQLite-Local-003B57?logo=sqlite)
+![Plataforma](https://img.shields.io/badge/Plataforma-Android-3DDC84?logo=android)
 ![Status](https://img.shields.io/badge/Status-Em%20desenvolvimento-yellow)
 
 </div>
@@ -15,149 +16,177 @@
 
 ## Sobre o projeto
 
-O **myStock** é um aplicativo mobile gratuito e de código aberto desenvolvido para auxiliar micro e pequenos empresários no controle de estoque e vendas. Funciona **100% offline**, sem necessidade de conexão com a internet ou assinatura de planos.
+O **myStock** é um aplicativo mobile gratuito e de código aberto para auxiliar micro e pequenos empresários no controle de estoque e de vendas. Os dados ficam **no próprio aparelho** (SQLite) e todas as funções principais, incluindo as notificações, funcionam **sem internet** e sem assinatura de planos.
 
-O aplicativo permite cadastrar produtos com seus respectivos lotes, monitorar datas de validade, registrar movimentações, realizar vendas e receber **notificações locais** automáticas sobre vencimentos próximos.
+O app controla produtos e lotes com data de validade, registra vendas e perdas, estima por quanto tempo o estoque dura, sugere ações para produtos que precisam de atenção e gera relatórios em CSV ou PDF. Como recurso opcional, faz **backup no Google Drive** do próprio usuário (este é o único recurso que usa internet).
 
-> Projeto desenvolvido como Trabalho de Conclusão de Curso (TCC) no curso Técnico em Desenvolvimento de Sistemas — IFRS Campus Canoas.
+> Projeto desenvolvido como Trabalho de Conclusão de Curso (TCC) no curso Técnico em Desenvolvimento de Sistemas, no IFRS Campus Canoas.
 
 ---
 
 ## Funcionalidades
 
 ### Estoque
-- Cadastro de produtos com nome, descrição, código de barras, unidade e categoria
-- Controle de **lotes** por produto (número do lote, quantidade, preço de custo, datas de fabricação, validade e entrada)
-- Status automático dos lotes: `ATIVO`, `VENCIDO`, `ESGOTADO`
-- Atualização automática de lotes vencidos ao abrir o app
-- Busca em tempo real via SQLite (`SELECT ... LIKE`)
-
-### Notificações offline
-- Alertas locais configuráveis por proximidade de validade dos lotes
-- Usuário define: dias de antecedência, horário e intervalo de repetição
-- Reagendamento automático após qualquer operação de CRUD
-- Tipos: `VALIDADE_PROXIMA`, `PRODUTO_VENCIDO`, `ESTOQUE_BAIXO`
-
-### Favoritos
-- Marcar produtos como favoritos para acesso rápido
+- Cadastro de produtos com nome, descrição, código de barras (digitado ou lido pela câmera), categoria, estoque mínimo e unidade (`un`, `cx`, `pct`, `kg`, `g`, `L`, `mL`)
+- Quantidades **fracionadas** para unidades de peso e volume (ex.: 1,5 kg); unidades contáveis aceitam só números inteiros
+- Controle de **lotes** por produto: número do lote, quantidade, preços de custo e de venda, datas de fabricação, validade e entrada
+- Status dos lotes: `ATIVO`, `VENCIDO` e `ESGOTADO`, com atualização automática dos vencidos (a baixa é registrada como perda por vencimento)
+- **Registro de perdas** por lote, com motivo (avaria, vencimento, roubo ou outro), separado das saídas por venda
+- **Exclusão lógica** de produtos e de lotes: o item some das telas, mas o histórico de vendas e movimentações é preservado
+- Busca por nome, descrição ou código de barras, com filtro por categoria
+- Gestão de categorias
 
 ### Vendas
-- Registro de vendas com itens, lotes, preço unitário e subtotal
-- Resumo de total vendido e quantidade de itens
+- Carrinho com seleção de lote, quantidade e preço editáveis
+- Sugestão do **lote recomendado**, que pondera validade próxima e estoque baixo; o peso de cada fator é configurável
+- Baixa de estoque e registro de movimentação na mesma transação
+- **Registro de vendas** com código da venda, produtos, faturamento, lucro por produto e lucro total
+- Busca por produto ou número da venda, e ordenação por mais recentes, mais antigas, maior faturamento ou maior lucro
+
+### Análise e sugestões
+- Dashboard com quantidade vendida, faturamento, perdas e para onde o estoque está indo, com comparação com o período anterior
+- **Previsão de duração do estoque** por Média Móvel Simples: janela de 4 semanas, ampliada para 12 quando há poucas vendas recentes. Produtos com baixa movimentação não recebem previsão, para evitar projeções enganosas
+- **Risco de vencimento** por produto: simula o consumo dos lotes pela ordem de validade e aponta quanto não deve ser vendido a tempo
+- **Sugestões na Home**, em um único card: produtos com lote perto de vencer, com estoque abaixo do mínimo e com baixa saída
+
+### Notificações locais
+- Alertas de validade agendados no aparelho, configuráveis: dias de antecedência, horário e intervalo de repetição
+- Notificações **agrupadas por produto**; tocar em uma delas abre direto a tela do produto
+- Reagendamento automático após qualquer alteração em produtos ou lotes
+- Central de notificações dentro do app
+
+### Relatórios e exportação
+- Exportação em **CSV** ou **PDF**, para salvar no aparelho ou compartilhar pela aba de compartilhamento do Android
+- **Modelos prontos**: posição de estoque, validade e perdas, vendas por período, produtos mais e menos vendidos, reposição sugerida e movimentações de estoque
+- Escolha livre do conteúdo: um checkbox para cada tabela e para cada informação dela, com período, janela de validade e cobertura de reposição configuráveis
+
+### Backup em nuvem (opcional)
+- Backup do banco de dados em uma pasta `myStock` no Google Drive do usuário (escopo restrito aos arquivos criados pelo app)
+- Backup manual, restauração e **backup automático em segundo plano** (WorkManager), disparado também quando o app vai para segundo plano
+- O envio é bloqueado, com aviso, quando não há conexão
+
+### Configurações
+- Tema claro, escuro ou do sistema
+- Geração de dados de teste e restauração das configurações padrão
 
 ---
 
-##  Arquitetura
+## Arquitetura
 
-O projeto segue o padrão **MVVM** (Model-View-ViewModel) com separação por features.
+O projeto segue o padrão **MVVM** (Model-View-ViewModel), organizado por funcionalidade. Os ViewModels herdam de `BaseViewModel` (estado de carregamento/erro e `safeNotify`) e o estado é gerenciado com `provider`.
 
 ```
 lib/
+├── main.dart
 ├── core/
-│   ├── database/
-│   │   └── db.dart                  # DatabaseHelper (SQLite singleton)
-│   ├── notifications/
-│   │   ├── notification_config.dart
-│   │   ├── notification_repository.dart
-│   │   ├── notification_scheduler.dart
-│   │   └── notification_service.dart
-│   └── theme/
-│       └── app_colors.dart
+│   ├── backup/            # configuração, agendamento (WorkManager) e Google Drive
+│   ├── database/          # db.dart (SQLite singleton) e gerador de dados de teste
+│   ├── extensions/        # datas, quantidades e conversões numéricas
+│   ├── notificacoes/      # serviço, agendador, repositório, config e navegação
+│   ├── promocoes/         # serviço das sugestões da Home
+│   ├── scanner/           # leitor de código de barras
+│   ├── theme/             # paleta de cores e controle de tema
+│   ├── validators/        # validadores de formulário
+│   ├── viewmodels/        # BaseViewModel
+│   └── widgets/           # componentes compartilhados (ex.: campo de busca)
 │
-├── features/
-│   ├── crud/
-│   │   ├── models/
-│   │   │   ├── categoria.dart
-│   │   │   ├── produto.dart
-│   │   │   ├── lote.dart
-│   │   │   └── notificacao.dart
-│   │   ├── repositories/
-│   │   │   ├── categoria_repository.dart
-│   │   │   ├── produto_repository.dart
-│   │   │   ├── lote_repository.dart
-│   │   │   └── notificacao_repository.dart
-│   │   ├── viewmodels/
-│   │   │   ├── home_viewmodel.dart
-│   │   │   ├── insert_viewmodel.dart
-│   │   │   ├── update_viewmodel.dart
-│   │   │   ├── delete_viewmodel.dart
-│   │   │   └── notification_viewmodel.dart
-│   │   └── views/
-│   │       ├── home_page.dart        # Shell global (IndexedStack + BottomNav)
-│   │       ├── insert_page.dart
-│   │       ├── update_page.dart
-│   │       ├── delete_page.dart
-│   │       └── notification_page.dart
-│   │
-│   ├── favorites/
-│   │   ├── viewmodels/favorite_viewmodel.dart
-│   │   └── views/favorites_page.dart
-│   │
-│   └── sales/
-│       ├── viewmodels/sale_viewmodel.dart
-│       └── views/sales_page.dart
-│
-└── main/
-    └── main.dart
+└── features/
+    ├── crud/              # produtos, lotes, categorias e notificações
+    │   ├── models/        # produto, lote, categoria, movimentacao_estoque...
+    │   ├── repositories/
+    │   ├── viewmodels/    # home, insert, update, delete, detalhe do produto...
+    │   └── views/         # home_page (shell), insert, update, delete, detalhe...
+    │
+    ├── venda/             # carrinho, vendas e registro de vendas
+    │   ├── models/
+    │   ├── repositories/
+    │   ├── viewmodels/
+    │   └── views/         # venda_page, configurações e registro de vendas
+    │
+    ├── analise/           # dashboard, previsão de estoque e risco de vencimento
+    │   ├── services/      # previsao_estoque_service
+    │   ├── viewmodels/
+    │   └── views/
+    │
+    └── config/            # configurações, backup e exportação de relatórios
+        ├── models/
+        ├── repositories/
+        ├── services/      # relatorio_service (CSV/PDF)
+        ├── viewmodels/    # config, backup e exportar
+        └── views/         # config_page e exportar_page
 ```
 
 ---
 
 ## Banco de dados
 
-O banco local utiliza **SQLite** via `sqflite`, compatível com Android.
+O banco local usa **SQLite** via `sqflite` (versão 3 do esquema). Todo o esquema é criado em um único `onCreate`; não há migrações entre versões (veja [Limitações](#limitações-conhecidas)).
 
+```mermaid
+erDiagram
+    CATEGORIAS ||--o{ PRODUTOS : classifica
+    PRODUTOS ||--o{ LOTES_PRODUTO : possui
+    LOTES_PRODUTO ||--o{ MOVIMENTACOES_ESTOQUE : registra
+    VENDAS ||--o{ VENDA_ITENS : contem
+    PRODUTOS ||--o{ VENDA_ITENS : vendido_em
+    LOTES_PRODUTO ||--o{ VENDA_ITENS : sai_de
+    PRODUTOS ||--o{ NOTIFICACOES : gera
+    LOTES_PRODUTO ||--o{ NOTIFICACOES : gera
+
+    PRODUTOS {
+        int id PK
+        string nome
+        string codigo_barras "unico"
+        int categoria_id FK
+        int estoque_min
+        int ativo "exclusao logica"
+        string unidade
+    }
+    LOTES_PRODUTO {
+        int id PK
+        int produto_id FK
+        string numero_lote
+        real quantidade
+        real quantidade_inicial
+        real preco_custo
+        real preco_venda
+        string data_validade
+        string status "ATIVO, VENCIDO, ESGOTADO"
+        int ativo "exclusao logica"
+    }
+    MOVIMENTACOES_ESTOQUE {
+        int id PK
+        int lote_id FK
+        string tipo "ENTRADA, SAIDA, AJUSTE, PERDA"
+        string motivo "VENDA, VENCIMENTO, AVARIA..."
+        real quantidade
+    }
+    VENDAS {
+        int id PK
+        real valor_total
+        string criado_em
+    }
+    VENDA_ITENS {
+        int id PK
+        int venda_id FK
+        int produto_id FK
+        int lote_id FK
+        real quantidade
+        real preco_unitario
+        real subtotal
+    }
 ```
-┌─────────────┐       ┌──────────────────┐       ┌──────────────────────┐
-│  categorias │◄──────│     produtos     │◄──────│    lotes_produto     │
-│─────────────│       │──────────────────│       │──────────────────────│
-│ id          │       │ id               │       │ id                   │
-│ nome        │       │ nome             │       │ produto_id (FK)      │
-│ criado_em   │       │ descricao        │       │ numero_lote          │
-└─────────────┘       │ codigo_barras    │       │ quantidade           │
-                      │ categoria_id (FK)│       │ preco_custo          │
-                      │ ativo            │       │ data_fabricacao      │
-                      │ unidade          │       │ data_validade        │
-                      │ criado_em        │       │ data_entrada         │
-                      └──────────────────┘       │ status               │
-                                                 └──────────────────────┘
-                                                          │
-                      ┌──────────────────┐               │
-                      │movimentacoes_    │◄──────────────┘
-                      │estoque           │
-                      │──────────────────│       ┌──────────────────────┐
-                      │ lote_id (FK)     │       │       vendas         │
-                      │ tipo             │       │──────────────────────│
-                      │ quantidade       │       │ id                   │
-                      │ observacao       │       │ valor_total          │
-                      └──────────────────┘       │ criado_em            │
-                                                 └──────────────────────┘
-                      ┌──────────────────┐                │
-                      │  produtos_       │       ┌────────▼─────────────┐
-                      │  favoritos       │       │     venda_itens      │
-                      │──────────────────│       │──────────────────────│
-                      │ produto_id (FK)  │       │ venda_id (FK)        │
-                      └──────────────────┘       │ produto_id (FK)      │
-                                                 │ lote_id (FK)         │
-                      ┌──────────────────┐       │ quantidade           │
-                      │  notificacoes    │       │ preco_unitario       │
-                      │──────────────────│       │ subtotal             │
-                      │ tipo             │       └──────────────────────┘
-                      │ produto_id (FK)  │
-                      │ lote_id (FK)     │
-                      │ mensagem         │
-                      │ visualizada      │
-                      └──────────────────┘
-```
+
+Tabelas de apoio: `categorias`, `notificacoes` (tipos `VALIDADE_PROXIMA`, `PRODUTO_VENCIDO` e `ESTOQUE_BAIXO`) e `notification_config` (configuração dos alertas). As preferências de tema, de backup e do peso do lote recomendado ficam em `shared_preferences`.
 
 ---
 
-##  Como executar
+## Como executar
 
 ### Pré-requisitos
 
-- [Flutter SDK](https://flutter.dev/docs/get-started/install) `>=3.0.0`
-- Android Studio ou VS Code com extensões Flutter/Dart
+- [Flutter SDK](https://docs.flutter.dev/get-started/install) (Dart `>=3.0.0 <4.0.0`)
+- Android Studio ou VS Code com as extensões Flutter/Dart
 - Dispositivo Android ou emulador
 
 ### Instalação
@@ -165,7 +194,7 @@ O banco local utiliza **SQLite** via `sqflite`, compatível com Android.
 ```bash
 # Clone o repositório
 git clone https://github.com/imortal1903/myStock.git
-cd mystock
+cd myStock
 
 # Instale as dependências
 flutter pub get
@@ -174,82 +203,83 @@ flutter pub get
 flutter run
 ```
 
-### Configuração Android (obrigatório para notificações)
+### Configuração Android
 
-Adicione ao `android/app/src/main/AndroidManifest.xml`:
+O `AndroidManifest.xml` do projeto já traz a configuração. Os pontos principais são:
 
-```xml
-<uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM"/>
-<uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
-<uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED"/>
+| Recurso | Necessário para |
+|---|---|
+| `POST_NOTIFICATIONS` | Exibir notificações (Android 13+); o app pede a permissão ao usuário |
+| `SCHEDULE_EXACT_ALARM` | Agendar alertas de validade em horário exato |
+| `RECEIVE_BOOT_COMPLETED` e receivers do `flutter_local_notifications` | Reagendar os alertas depois que o aparelho reinicia |
+| `INTERNET` | Backup no Google Drive |
+| `FOREGROUND_SERVICE` e `FOREGROUND_SERVICE_DATA_SYNC` | Backup automático em segundo plano |
 
-<application>
-  <!-- Reagenda notificações após reboot -->
-  <receiver
-    android:name="com.dexterous.flutterlocalnotifications.ScheduledNotificationBootReceiver"
-    android:exported="false">
-    <intent-filter>
-      <action android:name="android.intent.action.BOOT_COMPLETED"/>
-      <action android:name="android.intent.action.MY_PACKAGE_REPLACED"/>
-      <action android:name="android.intent.action.QUICKBOOT_POWERON"/>
-    </intent-filter>
-  </receiver>
+Ao instalar uma versão nova sobre outra, confira se as notificações continuam permitidas nas configurações do Android.
 
-  <receiver
-    android:name="com.dexterous.flutterlocalnotifications.ScheduledNotificationReceiver"
-    android:exported="false"/>
-</application>
-```
+### Backup no Google Drive (opcional)
+
+O backup usa o Google Sign-In e precisa de credenciais próprias do projeto:
+
+1. No [Google Cloud Console](https://console.cloud.google.com/), crie um projeto e ative a **Google Drive API**.
+2. Configure a tela de consentimento OAuth.
+3. Crie uma credencial **OAuth do tipo Android**, com o nome do pacote do app e o **SHA-1** da sua keystore (para debug, use `./gradlew signingReport` na pasta `android`).
+
+Sem isso, o restante do app funciona normalmente; só o backup em nuvem fica indisponível.
 
 ---
 
 ## Dependências principais
 
-| Pacote                        | Versão  | Uso                            |
-|-------------------------------|---------|--------------------------------|
-| `provider`                    | ^6.1.2  | Gerenciamento de estado (MVVM) |
-| `sqflite`                     | ^2.3.3  | Banco de dados SQLite          |
-| `path_provider`               | ^2.1.3  | Diretório do banco de dados    |
-| `flutter_local_notifications` | ^17.2.4 | Notificações locais offline    |
-| `timezone`                    | ^0.9.4  | Agendamento com fuso horário   |
-| `shared_preferences`          | ^2.3.2  | Configurações de notificação   |
-| `uuid`                        | ^4.4.0  | Geração de IDs únicos          |
-| `path`                        | ^1.9.0  | Manipulação de caminhos        |
+| Pacote | Uso |
+|---|---|
+| `provider` | Gerenciamento de estado (MVVM) |
+| `sqflite`, `path`, `path_provider` | Banco de dados SQLite local |
+| `shared_preferences` | Preferências (tema, backup, lote recomendado) |
+| `flutter_local_notifications`, `timezone`, `flutter_timezone` | Notificações locais agendadas |
+| `mobile_scanner` | Leitura de código de barras |
+| `workmanager` | Backup automático em segundo plano |
+| `google_sign_in`, `googleapis`, `extension_google_sign_in_as_googleapis_auth` | Backup no Google Drive |
+| `csv`, `pdf` | Geração de relatórios |
+| `file_picker`, `share_plus` | Salvar e compartilhar os relatórios |
+| `uuid` | Geração de identificadores únicos |
+
+As versões exatas estão no `pubspec.yaml`.
 
 ---
 
 ## Telas
 
-| Tela             | Descrição                                                   |
-|------------------|-------------------------------------------------------------|
-| **Home**         | Lista de produtos com estoque total e validade mais próxima |
-| **Inserir**      | Cadastro de produto (aba 1) e primeiro lote (aba 2)         |
-| **Editar**       | Seleção de produto -> editar dados ou gerenciar lotes       |
-| **Remover**      | Remoção de produto completo ou lotes individuais            |
-| **Notificações** | Configuração de alertas: dias antes, horário e intervalo    |
-| **Favoritos**    | Produtos marcados como favoritos                            |
-| **Vendas**       | Registro e resumo de vendas                                 |
+| Tela | Descrição |
+|---|---|
+| **Home** | Lista de produtos com busca e filtro por categoria, atalhos de cadastro e o card de sugestões |
+| **Detalhe do produto** | Estoque, preço médio, resumo e lista de lotes, com registro de perda por lote e acesso à análise |
+| **Inserir** | Cadastro do produto (aba 1) e do primeiro lote (aba 2) |
+| **Editar e Remover** | Edição de produtos e lotes e remoção lógica |
+| **Vendas** | Busca de produtos, carrinho, lote recomendado e finalização |
+| **Configurações de vendas** | Peso do lote recomendado e acesso ao registro de vendas |
+| **Registro de vendas** | Histórico com faturamento e lucro, busca e ordenação |
+| **Análise** | Indicadores do período e previsão de estoque por produto |
+| **Notificações** | Central de alertas e configuração de dias, horário e intervalo |
+| **Configurações** | Tema, backup em nuvem, exportação de relatórios e dados de teste |
+| **Exportar relatório** | Escolha do modelo, das tabelas e das informações, do período e do formato |
 
 ---
 
-## Contribuindo
+## Limitações conhecidas
 
-Contribuições são bem-vindas! Para contribuir:
-
-1. Faça um fork do projeto
-2. Crie uma branch para sua feature (`git checkout -b feature/nova-funcionalidade`)
-3. Commit suas alterações (`git commit -m 'Adiciona nova funcionalidade'`)
-4. Push para a branch (`git push origin feature/nova-funcionalidade`)
-5. Abra um Pull Request
+- **Lucro com custo atual.** O custo no momento da venda não é guardado, então o lucro e o valor perdido usam o preço de custo atual do lote.
+- **Previsão sem sazonalidade.** A Média Móvel Simples não trata sazonalidade, que exigiria histórico de vários anos.
+- **Somente Android.** As notificações exatas e o backup em segundo plano foram configurados e testados apenas para Android.
 
 ---
 
 ## Autor
 
-Desenvolvido por **Brayan** como Trabalho de Conclusão de Curso no **IFRS Campus Canoas**
+Desenvolvido por **Brayan** como Trabalho de Conclusão de Curso no **IFRS Campus Canoas**.
 
 ---
 
-<div>
-  <sub>myStock — gestão de estoque simples, gratuita e offline.</sub>
+<div align="center">
+  <sub>myStock: gestão de estoque simples e gratuita, que funciona offline.</sub>
 </div>
