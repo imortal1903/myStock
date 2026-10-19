@@ -30,7 +30,7 @@ O app controla produtos e lotes com data de validade, registra vendas e perdas, 
 - Cadastro de produtos com nome, descrição, código de barras (digitado ou lido pela câmera), categoria, estoque mínimo e unidade (`un`, `cx`, `pct`, `kg`, `g`, `L`, `mL`)
 - Quantidades **fracionadas** para unidades de peso e volume (ex.: 1,5 kg); unidades contáveis aceitam só números inteiros
 - Controle de **lotes** por produto: número do lote, quantidade, preços de custo e de venda, datas de fabricação, validade e entrada
-- Status dos lotes: `ATIVO`, `VENCIDO` e `ESGOTADO`, com atualização automática dos vencidos (a baixa é registrada como perda por vencimento)
+- Status dos lotes: `ATIVO`, `VENCIDO` , `ESGOTADO` e `DESATIVADO`, com atualização automática dos vencidos (a baixa é registrada como perda por vencimento)
 - **Registro de perdas** por lote, com motivo (avaria, vencimento, roubo ou outro), separado das saídas por venda
 - **Exclusão lógica** de produtos e de lotes: o item some das telas, mas o histórico de vendas e movimentações é preservado
 - Busca por nome, descrição ou código de barras, com filtro por categoria
@@ -151,7 +151,7 @@ erDiagram
         real preco_custo
         real preco_venda
         string data_validade
-        string status "ATIVO, VENCIDO, ESGOTADO"
+        string status "ATIVO, VENCIDO, ESGOTADO, DESATIVADO"
         int ativo "exclusao logica"
     }
     MOVIMENTACOES_ESTOQUE {
