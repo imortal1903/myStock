@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:provider/provider.dart';
+import 'package:flutter/services.dart';
 
 import 'core/theme/color_palette.dart';
 import 'core/theme/theme_controller.dart';
@@ -16,6 +17,14 @@ import 'features/config/viewmodels/config_viewmodel.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  await SystemChrome.setEnabledSystemUIMode(
+    SystemUiMode.manual,
+    overlays: const [
+      SystemUiOverlay.top,
+    ],
+  );
+
   await BackupScheduler.inicializar();
   await BackupScheduler.sincronizarAoAbrirApp();
 
@@ -61,9 +70,19 @@ class _MyStockAppState extends State<MyStockApp> with WidgetsBindingObserver {
   }
 
   @override
+  @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.paused) {
       BackupScheduler.agendarAoFechar();
+    }
+
+    if (state == AppLifecycleState.resumed) {
+      SystemChrome.setEnabledSystemUIMode(
+        SystemUiMode.manual,
+        overlays: const [
+          SystemUiOverlay.top,
+        ],
+      );
     }
   }
 
