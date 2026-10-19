@@ -16,9 +16,6 @@ class Db {
     return _db!;
   }
 
-  /// Caminho absoluto do arquivo .db no disco. Usado pelo sistema de
-  /// backup/restauração (GoogleDriveBackupService) para ler/substituir o
-  /// arquivo diretamente — não depende de a conexão estar aberta.
   Future<String> caminhoArquivo() async {
     if (_dbPath != null) return _dbPath!;
     final dir = await getApplicationDocumentsDirectory();
@@ -28,12 +25,6 @@ class Db {
     return _dbPath!;
   }
 
-  /// Fecha a conexão atual, se houver uma aberta. Necessário antes de ler
-  /// o arquivo .db pra backup (garante que tudo que está no WAL/journal
-  /// do SQLite já foi persistido no arquivo principal) e antes de
-  /// substituí-lo por um backup restaurado. A próxima chamada a
-  /// `database` reabre automaticamente (e roda as migrations pendentes,
-  /// se o backup restaurado for de uma versão mais antiga do app).
   Future<void> fecharConexao() async {
     if (_db != null) {
       await _db!.close();
@@ -46,57 +37,10 @@ class Db {
 
     return openDatabase(
       caminho,
-      version: 2,
+      version: 1,
       onOpen: (db) async => db.execute('PRAGMA foreign_keys = ON'),
       onCreate: _onCreate,
-      onUpgrade: _onUpgrade,
     );
-  }
-
-  // ── MIGRAÇÕES ────────────────────────────────────────────────────────────
-
-  /// v1 → v2:
-  ///   - lotes_produto.quantidade_inicial: snapshot imutável da quantidade
-  ///     recebida na criação do lote. Necessário para calcular "vendido"
-  ///     vs. "restante" por lote sem depender só do log de movimentações
-  ///     (que pode estar incompleto para entradas antigas).
-  ///   - movimentacoes_estoque.motivo: motivo estruturado da movimentação
-  ///     (ex.: distinguir perda por VENCIMENTO de perda por AVARIA no
-  ///     dashboard de Análise).
-  ///
-  /// Observação importante: por limitação do ALTER TABLE do SQLite, as
-  /// constraints CHECK dessas colunas só são aplicadas em bancos criados
-  /// do zero (via _onCreate). Em bancos migrados a partir da v1, a
-  /// validação de motivo/quantidade fica a cargo da camada Dart — os
-  /// enums TipoMovimentacao/MotivoMovimentacao e o construtor Lote.novo()
-  /// cobrem isso na prática.
-  Future<void> _onUpgrade(Database db, int oldVersion, int newVersion) async {
-    if (oldVersion < 3) {
-      // Declarada como INTEGER por herança do tipo original de `quantidade`,
-      // mas isso não impede valores fracionários: por afinidade de coluna,
-      // o SQLite guarda um REAL (ex.: 1.5) sem truncar quando o valor não é
-      // convertível sem perdas para inteiro. Não é necessário migrar para
-      // REAL para suportar vendas fracionadas (kg/g/L/mL) introduzidas
-      // depois — ver também os comentários em _onCreate.
-      await db.execute(
-        'ALTER TABLE lotes_produto ADD COLUMN quantidade_inicial INTEGER NOT NULL DEFAULT 0',
-      );
-      await db.execute(
-        'ALTER TABLE movimentacoes_estoque ADD COLUMN motivo TEXT',
-      );
-
-      // Backfill: não existe registro histórico da quantidade inicial real
-      // de lotes já cadastrados antes desta migration. O melhor proxy
-      // disponível é a quantidade atual — isso subestima o valor real para
-      // lotes que já sofreram saídas antes da migration, mas é o único
-      // dado que temos. A partir daqui, todo novo lote grava o valor certo
-      // (veja Lote.novo() em lote.dart).
-      await db.rawUpdate('''
-        UPDATE lotes_produto
-        SET quantidade_inicial = quantidade
-        WHERE quantidade_inicial = 0
-      ''');
-    }
   }
 
   Future<void> _onCreate(Database db, int version) async {
@@ -136,7 +80,8 @@ class Db {
       data_validade TEXT NOT NULL,
       data_entrada TEXT NOT NULL,
       status TEXT NOT NULL DEFAULT 'ATIVO'
-        CHECK(status IN('ATIVO','VENCIDO','ESGOTADO')),
+        CHECK(status IN('ATIVO','VENCIDO','ESGOTADO', 'DESATIVADO')),
+      ativo INTEGER NOT NULL DEFAULT 1,
       criado_em TEXT NOT NULL DEFAULT(datetime('now')),
       FOREIGN KEY(produto_id) REFERENCES produtos(id) ON DELETE CASCADE
     )""");
@@ -213,6 +158,7 @@ class Db {
     b.execute("CREATE INDEX idx_produto_categoria       ON produtos(categoria_id)");
     b.execute("CREATE INDEX idx_lote_produto            ON lotes_produto(produto_id)");
     b.execute("CREATE INDEX idx_lote_validade           ON lotes_produto(data_validade)");
+    b.execute("CREATE INDEX idx_lote_ativo              ON lotes_produto(ativo)");
     b.execute("CREATE INDEX idx_movimentacao_lote       ON movimentacoes_estoque(lote_id)");
     b.execute("CREATE INDEX idx_venda_data              ON vendas(criado_em)");
     b.execute("CREATE INDEX idx_venda_itens_venda       ON venda_itens(venda_id)");

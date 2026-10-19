@@ -74,8 +74,7 @@ class ProdutoComLotes {
   }
 
   /// Valor formatado sozinho — sem rótulo — pra usar onde já existe um
-  /// texto próprio explicando o que é (ex.: "Média de preço" em
-  /// ProdutoDetailPage).
+  /// texto próprio explicando o que é.
   String get precoMedioValorFormatado {
     final media = precoMedioLotes;
     if (media == null) return 'Sem preço registrado';
@@ -122,8 +121,6 @@ class HomeViewModel extends BaseViewModel {
   String get query => _query;
   int? get categoriaFiltroId => _categoriaFiltroId;
   int get selectedNavIndex => _selectedNavIndex;
-
-  /// Alias mantido para compatibilidade com a UI existente.
   String? get error => errorMessage;
 
   Categoria? get categoriaFiltroSelecionada {
@@ -139,7 +136,6 @@ class HomeViewModel extends BaseViewModel {
       _categorias = await _catRepo.getAll();
       safeNotify();
     } catch (_) {
-      // Filtro de categoria é opcional.
     }
   }
 
@@ -165,7 +161,7 @@ class HomeViewModel extends BaseViewModel {
         return ProdutoComLotes(produto: p, lotes: lotes);
       }));
 
-      if (token != _searchToken) return; // resultado obsoleto
+      if (token != _searchToken) return;
       _items = result;
       setStatus(ViewStatus.idle);
     } catch (e) {

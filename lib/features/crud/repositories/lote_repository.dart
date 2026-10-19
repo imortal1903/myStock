@@ -14,15 +14,11 @@ class LoteRepository {
       : _db = db ?? Db.instance,
         _movRepo = movRepo ?? MovimentacaoRepository();
 
-  // ── INSERT ─────────────────────────────────────────────────────────────────
-
   Future<int> insert(Lote lote) async {
     final db = await _db.database;
     return db.insert('lotes_produto', lote.toMap(),
         conflictAlgorithm: ConflictAlgorithm.abort);
   }
-
-  // ── UPDATE ─────────────────────────────────────────────────────────────────
 
   Future<int> update(Lote lote) async {
     final db = await _db.database;
@@ -30,27 +26,29 @@ class LoteRepository {
         where: 'id = ?', whereArgs: [lote.id]);
   }
 
-  // ── DELETE ─────────────────────────────────────────────────────────────────
 
   Future<int> delete(int id) async {
     final db = await _db.database;
     return db.delete('lotes_produto', where: 'id = ?', whereArgs: [id]);
   }
 
-  // ── GET BY PRODUTO ─────────────────────────────────────────────────────────
-
-  Future<List<Lote>> getByProduto(int produtoId) async {
+  /// Por padrão, não traz lotes desativados (soft-deleted) - mesmo
+  /// critério usado em `ProdutoRepository.search(apenasAtivos: true)`.
+  Future<List<Lote>> getByProduto(
+      int produtoId, {
+        bool incluirDesativados = false,
+      }) async {
     final db   = await _db.database;
     final rows = await db.query(
       'lotes_produto',
-      where:   'produto_id = ?',
+      where: incluirDesativados
+          ? 'produto_id = ?'
+          : 'produto_id = ? AND ativo = 1',
       whereArgs: [produtoId],
       orderBy: 'data_validade ASC',
     );
     return rows.map(Lote.fromMap).toList();
   }
-
-  // ── LOTES PRÓXIMOS AO VENCIMENTO ───────────────────────────────────────────
 
   Future<List<Lote>> getLotesProximosVencimento(int dias) async {
     final db     = await _db.database;
@@ -61,6 +59,7 @@ class LoteRepository {
     final rows = await db.rawQuery('''
       SELECT * FROM lotes_produto
       WHERE status = 'ATIVO'
+        AND ativo = 1
         AND data_validade <= ?
       ORDER BY data_validade ASC
     ''', [limite]);
@@ -68,13 +67,6 @@ class LoteRepository {
     return rows.map(Lote.fromMap).toList();
   }
 
-  // ── LOTES PRÓXIMOS AO VENCIMENTO (COM DADOS DO PRODUTO) ────────────────────
-
-  /// Igual a [getLotesProximosVencimento], mas já traz nome e unidade do
-  /// produto de cada lote — para telas que listam lotes de vários produtos
-  /// ao mesmo tempo (ex.: seção Atenção do dashboard de Análise) e
-  /// precisam dizer qual produto é cada um sem uma consulta extra por
-  /// lote.
   Future<List<LoteComProduto>> getLotesProximosVencimentoComProduto(
       int dias) async {
     final db     = await _db.database;
@@ -87,6 +79,7 @@ class LoteRepository {
       FROM lotes_produto lp
       JOIN produtos p ON p.id = lp.produto_id
       WHERE lp.status = 'ATIVO'
+        AND lp.ativo = 1
         AND lp.data_validade <= ?
       ORDER BY lp.data_validade ASC
     ''', [limite]);
@@ -94,24 +87,19 @@ class LoteRepository {
     return rows.map(LoteComProduto.fromMap).toList();
   }
 
-  // ── ATUALIZA STATUS ────────────────────────────────────────────────────────
-
   Future<void> atualizarStatusVencidos() async {
     final db = await _db.database;
     final hoje = DateTime.now().toSqlDate;
 
-    // Antes de promover os lotes a VENCIDO, registra a perda de cada um —
+    // Antes de promover os lotes a VENCIDO, registra a perda de cada um -
     // é esse registro em movimentacoes_estoque (motivo VENCIMENTO) que
     // alimenta os cards "Vencidas" e "Para onde o estoque está indo" na
     // tela de Análise. Sem ele, o status muda no banco, mas a Análise
     // nunca "enxerga" a perda.
-    //
-    // Filtra por status = 'ATIVO' também aqui, então um lote já VENCIDO
-    // não é registrado de novo em execuções seguintes (idempotente).
     final expirando = await db.query(
       'lotes_produto',
       columns: ['id', 'quantidade'],
-      where: "status = 'ATIVO' AND data_validade < ?",
+      where: "status = 'ATIVO' AND ativo = 1 AND data_validade < ?",
       whereArgs: [hoje],
     );
 
@@ -132,22 +120,21 @@ class LoteRepository {
       UPDATE lotes_produto
       SET status = 'VENCIDO'
       WHERE status = 'ATIVO'
+        AND ativo = 1
         AND data_validade < ?
     ''', [hoje]);
 
     // Reverte lotes cuja validade foi editada para uma data futura depois
-    // de já terem sido marcados como vencidos. Caso raro (edição manual),
-    // e propositalmente não estorna a movimentação de perda já registrada
-    // acima — isso ficaria como um ajuste manual do usuário, se necessário.
+    // de já terem sido marcados como vencidos.
     await db.rawUpdate('''
       UPDATE lotes_produto
       SET status = 'ATIVO'
       WHERE status = 'VENCIDO'
+        AND ativo = 1
         AND data_validade >= ?
     ''', [hoje]);
   }
 
-  // ── GET BY ID ──────────────────────────────────────────────────────────────
 
   Future<Lote?> getById(int id) async {
     final db   = await _db.database;
@@ -157,15 +144,13 @@ class LoteRepository {
     return Lote.fromMap(rows.first);
   }
 
-  // ── RESUMO DE ESTOQUE POR PRODUTO ──────────────────────────────────────────
-
   Future<Map<int, EstoqueResumo>> getResumoEstoquePorProduto() async {
     final db = await _db.database;
     final rows = await db.rawQuery('''
       SELECT
         produto_id,
-        SUM(CASE WHEN status = 'ATIVO'   THEN quantidade ELSE 0 END) AS qtd_ativa,
-        MAX(CASE WHEN status = 'VENCIDO' THEN 1 ELSE 0 END)          AS tem_vencido
+        SUM(CASE WHEN status = 'ATIVO' AND ativo = 1 THEN quantidade ELSE 0 END) AS qtd_ativa,
+        MAX(CASE WHEN status = 'VENCIDO' AND ativo = 1 THEN 1 ELSE 0 END)        AS tem_vencido
       FROM lotes_produto
       GROUP BY produto_id
     ''');
@@ -177,5 +162,57 @@ class LoteRepository {
           temLoteVencido: (r['tem_vencido'] as int) == 1,
         ),
     };
+  }
+
+  /// Exclusão lógica (soft delete) de um lote: marca `ativo = 0` em vez de
+  /// apagar a linha. Diferente de [delete] (hard delete), isso nunca
+  /// esbarra na constraint de chave estrangeira de `venda_itens.lote_id`
+  /// (que não tem `ON DELETE CASCADE`).
+  Future<void> desativar(int id) async {
+    final db = await _db.database;
+    await db.update(
+      'lotes_produto',
+      {'ativo': 0},
+      where: 'id = ?',
+      whereArgs: [id],
+    );
+  }
+
+  Future<void> registrarPerda({
+    required int loteId,
+    required double quantidade,
+    required MotivoMovimentacao motivo,
+    String? observacao,
+  }) async {
+    if (quantidade <= 0) {
+      throw ArgumentError('A quantidade da perda precisa ser maior que zero.');
+    }
+
+    final lote = await getById(loteId);
+    if (lote == null) {
+      throw ArgumentError('Lote $loteId não encontrado.');
+    }
+
+    // Nunca registra mais do que o lote realmente tem.
+    final perda = quantidade > lote.quantidade ? lote.quantidade : quantidade;
+
+    await _movRepo.insert(MovimentacaoEstoque(
+      loteId: loteId,
+      tipo: TipoMovimentacao.perda,
+      motivo: motivo,
+      quantidade: perda,
+      observacao: observacao,
+      criadoEm: DateTime.now(),
+    ));
+
+    final restante = lote.quantidade - perda;
+    final novoStatus = restante <= 0 && lote.status == LoteStatus.ativo
+        ? LoteStatus.esgotado
+        : lote.status;
+
+    await update(lote.copyWith(
+      quantidade: restante < 0 ? 0 : restante,
+      status: novoStatus,
+    ));
   }
 }

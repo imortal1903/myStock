@@ -32,8 +32,6 @@ class GoogleDriveBackupService {
   GoogleSignInAccount? get contaAtual => _contaAtual;
 
   /// Tenta recuperar silenciosamente a última conta usada.
-  ///
-  /// Não abre tela de login.
   Future<GoogleSignInAccount?> tentarReconectarSilenciosamente() async {
     try {
       _contaAtual = await _googleSignIn.signInSilently();
@@ -45,9 +43,6 @@ class GoogleDriveBackupService {
   }
 
   /// Login interativo.
-  ///
-  /// Usado somente quando o usuário está dentro do aplicativo
-  /// e realmente precisa conectar a conta.
   Future<GoogleSignInAccount> conectar() async {
     try {
       final conta = await _googleSignIn.signIn();
@@ -76,8 +71,6 @@ class GoogleDriveBackupService {
   }
 
   /// Cria a API do Drive permitindo login interativo.
-  ///
-  /// É usado pelo backup manual e pelas operações feitas pela interface.
   Future<drive.DriveApi> _driveApi() async {
     if (_contaAtual == null) {
       await conectar();
@@ -96,13 +89,8 @@ class GoogleDriveBackupService {
   }
 
   /// Cria a API do Drive exclusivamente para execução em background.
-  ///
-  /// IMPORTANTE:
-  /// não chama signIn(), pois isso exigiria interação do usuário.
   Future<drive.DriveApi> _driveApiEmSegundoPlano() async {
     try {
-      // A instância criada pelo WorkManager começa sem _contaAtual.
-      // Por isso tentamos recuperar silenciosamente a sessão existente.
       _contaAtual = await _googleSignIn.signInSilently();
     } catch (e) {
       _contaAtual = null;
@@ -190,8 +178,6 @@ class GoogleDriveBackupService {
   }
 
   /// Backup manual.
-  ///
-  /// Pode usar autenticação interativa caso necessário.
   Future<void> fazerBackup() async {
     final api = await _driveApi();
 
@@ -199,22 +185,14 @@ class GoogleDriveBackupService {
   }
 
   /// Backup executado pelo WorkManager.
-  ///
-  /// NÃO abre login.
-  /// Tenta apenas recuperar silenciosamente uma sessão Google já autorizada.
   Future<void> fazerBackupEmSegundoPlano() async {
     final api = await _driveApiEmSegundoPlano();
 
     await _enviarBackup(api);
   }
 
-  /// Parte comum do envio do banco para o Google Drive.
   Future<void> _enviarBackup(drive.DriveApi api) async {
     final idPasta = await _idPastaMyStock(api);
-
-    // Fecha a conexão antes de ler o arquivo.
-    // Isso garante que os dados pendentes sejam persistidos
-    // no arquivo principal do SQLite.
     await Db.instance.fecharConexao();
 
     final caminhoDb = await Db.instance.caminhoArquivo();
@@ -260,7 +238,6 @@ class GoogleDriveBackupService {
   }
 
   /// Baixa o backup mais recente do Drive e substitui o banco local.
-  ///
   /// Retorna false se ainda não existir nenhum backup na nuvem.
   Future<bool> restaurarBackup() async {
     final api = await _driveApi();
@@ -292,7 +269,6 @@ class GoogleDriveBackupService {
 
     await Db.instance.fecharConexao();
 
-    // Baixa primeiro para um arquivo temporário.
     final arquivoTemp = File('$caminhoDb.restaurando');
 
     final sink = arquivoTemp.openWrite();

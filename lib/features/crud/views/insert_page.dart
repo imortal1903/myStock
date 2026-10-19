@@ -151,7 +151,7 @@ class _InsertViewState extends State<_InsertView>
   }
 }
 
-// ── Aba Produto ──
+// Aba Produto
 class _ProdutoTab extends StatefulWidget {
   final InsertViewModel vm;
   final TextEditingController nomeCtrl, descCtrl, barcodeCtrl, estoqueMinCtrl;
@@ -274,7 +274,7 @@ class _ProdutoTabState extends State<_ProdutoTab>
   }
 }
 
-// ── Aba Lote ──
+// Aba Lote
 class _LoteTab extends StatefulWidget {
   final InsertViewModel vm;
   final TextEditingController loteNumCtrl,
@@ -407,7 +407,7 @@ class _LoteTabState extends State<_LoteTab>
   }
 }
 
-// ── Save bar ──
+// Save bar
 class _SaveBar extends StatelessWidget {
   final bool isLoading;
   final String? errorMessage;

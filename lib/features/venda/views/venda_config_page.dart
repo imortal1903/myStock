@@ -3,9 +3,9 @@ import 'package:provider/provider.dart';
 
 import '../../../core/theme/color_palette.dart';
 import '../viewmodels/venda_viewmodel.dart';
+import 'venda_historico_page.dart';
 
-// ─── Página de configuração da recomendação de lotes ───────────────────────────
-
+// Página de configurações de vendas
 class VendaConfigPage extends StatelessWidget {
   const VendaConfigPage({super.key});
 
@@ -21,6 +21,11 @@ class VendaConfigPage extends StatelessWidget {
               physics: const BouncingScrollPhysics(),
               padding: const EdgeInsets.fromLTRB(16, 8, 16, 32),
               child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                const _RegistroVendasButton(),
+                const SizedBox(height: 20),
+                Text('Recomendação de lotes',
+                    style: TextStyle(color: context.colors.textPrimary, fontSize: 16, fontWeight: FontWeight.w600)),
+                const SizedBox(height: 12),
                 const _ExplicacaoCard(),
                 const SizedBox(height: 20),
                 Text('Ajustar prioridade',
@@ -46,8 +51,7 @@ class VendaConfigPage extends StatelessWidget {
   }
 }
 
-// ─── Top Bar ──────────────────────────────────────────────────────────────────
-
+// Top Bar
 class _TopBar extends StatelessWidget {
   const _TopBar();
 
@@ -61,19 +65,62 @@ class _TopBar extends StatelessWidget {
           icon: Icon(Icons.arrow_back_ios_new, color: context.colors.textPrimary, size: 18),
         ),
         Expanded(
-          child: Text('Recomendação de lotes',
+          child: Text('Configurações de vendas',
               textAlign: TextAlign.center,
               style: TextStyle(
                   color: context.colors.textPrimary, fontSize: 18, fontWeight: FontWeight.w600, letterSpacing: 0.5)),
         ),
-        const SizedBox(width: 48), // balanceia o botão de voltar
+        const SizedBox(width: 48),
       ]),
     );
   }
 }
 
-// ─── Card explicativo ───────────────────────────────────────────────────────────
+// Atalho para o registro de vendas
+class _RegistroVendasButton extends StatelessWidget {
+  const _RegistroVendasButton();
 
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: () => Navigator.push(
+        context,
+        MaterialPageRoute(builder: (_) => const VendaHistoricoPage()),
+      ),
+      child: Container(
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          color: context.colors.surface,
+          borderRadius: BorderRadius.circular(14),
+        ),
+        child: Row(children: [
+          Container(
+            width: 36, height: 36,
+            alignment: Alignment.center,
+            decoration: BoxDecoration(
+              color: context.colors.accent.withValues(alpha: 0.15),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Icon(Icons.receipt_long_outlined,
+                color: context.colors.accent, size: 20),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Text('Ver registro de vendas',
+                style: TextStyle(
+                  color: context.colors.textPrimary,
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                )),
+          ),
+          Icon(Icons.chevron_right, color: context.colors.textGhost, size: 20),
+        ]),
+      ),
+    );
+  }
+}
+
+// Card explicativo
 class _ExplicacaoCard extends StatelessWidget {
   const _ExplicacaoCard();
 
@@ -108,8 +155,7 @@ class _ExplicacaoCard extends StatelessWidget {
   }
 }
 
-// ─── Slider de ponderação ───────────────────────────────────────────────────────
-
+// Slider de ponderação
 class _PesoSliderCard extends StatelessWidget {
   const _PesoSliderCard();
 
@@ -201,8 +247,7 @@ class _PesoExtremo extends StatelessWidget {
   );
 }
 
-// ─── Atalhos rápidos (presets) ───────────────────────────────────────────────────
-
+// Atalhos rápidos
 class _Preset {
   final String label;
   final double valor;
@@ -252,8 +297,7 @@ class _PresetChips extends StatelessWidget {
   }
 }
 
-// ─── Exemplo dinâmico ───────────────────────────────────────────────────────────
-
+// Exemplo dinâmico
 class _ExemploCard extends StatelessWidget {
   const _ExemploCard();
 

@@ -1,10 +1,15 @@
+import 'dart:async';
+import 'dart:io';
+
+import 'package:flutter/widgets.dart';
+
 import '../../../core/backup/backup_config.dart';
 import '../../../core/backup/backup_config_repository.dart';
 import '../../../core/backup/backup_scheduler.dart';
 import '../../../core/backup/google_drive_backup_service.dart';
 import '../../../core/viewmodels/base_viewmodel.dart';
 
-class BackupViewModel extends BaseViewModel {
+class BackupViewModel extends BaseViewModel with WidgetsBindingObserver {
   final BackupConfigRepository _repo;
   final GoogleDriveBackupService _drive;
 
@@ -14,56 +19,98 @@ class BackupViewModel extends BaseViewModel {
   })  : _repo = repo ?? BackupConfigRepository(),
         _drive = drive ?? GoogleDriveBackupService() {
     _carregar();
+    _startTimer();
+    WidgetsBinding.instance.addObserver(this);
   }
 
   BackupConfig _config = const BackupConfig();
   BackupConfig get config => _config;
 
-  /// Loading próprio para "fazer backup agora" — independente do
-  /// `status`/`isLoading` herdado, que aqui é usado para ativar/desativar.
-  /// Os dois podem, em tese, ocorrer em momentos diferentes, então cada
-  /// ação tem seu próprio indicador (mesmo raciocínio de VendaViewModel).
   bool _fazendoBackup = false;
   bool get fazendoBackup => _fazendoBackup;
 
   bool _restaurando = false;
   bool get restaurando => _restaurando;
 
+  Timer? _timer;
+
+  static const _semConexaoMsg =
+      'Sem conexão com a internet. Conecte-se e tente novamente.';
+
+  /// Faz uma resolução DNS real em vez de só checar o tipo de conexão
+  /// (wi-fi/dados), assim detecta também o caso de estar "conectado" a uma
+  /// rede sem saída de internet de fato.
+  Future<bool> _temConexao() async {
+    try {
+      final resultado = await InternetAddress.lookup('google.com')
+          .timeout(const Duration(seconds: 5));
+      return resultado.isNotEmpty && resultado.first.rawAddress.isNotEmpty;
+    } on SocketException catch (_) {
+      return false;
+    } on TimeoutException catch (_) {
+      return false;
+    }
+  }
+
+  void _startTimer() {
+    _timer = Timer.periodic(const Duration(minutes: 1), (_) => _carregar());
+  }
+
+  @override
+  void dispose() {
+    _timer?.cancel();
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      _carregar();
+    }
+  }
+
   Future<void> _carregar() async {
     _config = await _repo.carregar();
-    if (_config.ativado) {
+    if (_config.ativado && _config.contaEmail == null) {
       final conta = await _drive.tentarReconectarSilenciosamente();
       _config = _config.copyWith(contaEmail: conta?.email);
     }
     safeNotify();
   }
 
-  /// Ativa o backup em nuvem: pede login no Google (se preciso), agenda o
-  /// backup automático no horário já configurado, e já dispara um backup
-  /// imediato — pedido explicitamente para "ativar" não ficar sem efeito
-  /// visível até o próximo horário agendado.
   Future<void> ativar() async {
     await run<void>(
           () async {
+        if (!await _temConexao()) {
+          throw GoogleDriveBackupException(_semConexaoMsg);
+        }
+
         final conta = await _drive.conectar();
+        await _repo.salvarAtivado(true);
+        await _repo.salvarContaEmail(conta.email);
 
-        // Login e agendamento primeiro, SEM marcar `ativado` ainda — se
-        // qualquer passo daqui falhar (ex.: agendar() rejeitando por
-        // faltar a config nativa do foreground service), o switch
-        // continua desligado e nada fica salvo pela metade.
-        await BackupScheduler.agendar(intervaloMinutos: _config.intervaloMinutos);
-        await _drive.fazerBackup();
-
-        // Só chega aqui se login, agendamento e o backup imediato deram
-        // certo — agora sim persiste como ativado.
         _config = _config.copyWith(
           ativado: true,
           contaEmail: conta.email,
-          ultimoBackupEm: DateTime.now(),
         );
-        await _repo.salvarAtivado(true);
-        await _repo.salvarContaEmail(conta.email);
-        await _repo.salvarUltimoBackup(_config.ultimoBackupEm!);
+
+        // Agenda o backup automático.
+        await BackupScheduler.agendar(
+          intervaloMinutos: _config.intervaloMinutos,
+        );
+
+        // Faz o primeiro backup de verdade.
+        await _drive.fazerBackup();
+
+        // Só registra como último backup depois que deu certo.
+        final agora = DateTime.now();
+
+        await _repo.salvarUltimoBackup(agora);
+
+        _config = _config.copyWith(
+          ultimoBackupEm: agora,
+        );
       },
       onError: (e) => e is GoogleDriveBackupException
           ? e.toString()
@@ -71,9 +118,6 @@ class BackupViewModel extends BaseViewModel {
     );
   }
 
-  /// Desativa o backup: cancela o agendamento e desconecta a conta. Não
-  /// apaga o backup já existente no Drive — só para de mantê-lo
-  /// atualizado.
   Future<void> desativar() async {
     await run<void>(
           () async {
@@ -99,9 +143,6 @@ class BackupViewModel extends BaseViewModel {
     try {
       await BackupScheduler.agendar(intervaloMinutos: intervaloMinutos);
     } catch (e) {
-      // Reverte o intervalo exibido — se o reagendamento falhou, o
-      // agendamento antigo (se houver) continua valendo, então mostrar o
-      // valor novo como se tivesse dado certo seria enganoso.
       _config = _config.copyWith(intervaloMinutos: intervaloAnterior);
       await _repo.salvarIntervaloMinutos(intervaloAnterior);
       setStatus(
@@ -114,10 +155,21 @@ class BackupViewModel extends BaseViewModel {
   Future<void> fazerBackupAgora() async {
     _fazendoBackup = true;
     safeNotify();
+
+    if (!await _temConexao()) {
+      setStatus(ViewStatus.error, error: _semConexaoMsg);
+      _fazendoBackup = false;
+      safeNotify();
+      return;
+    }
+
+    final agora = DateTime.now();
+    await _repo.salvarUltimaTentativa(agora);
+    _config = _config.copyWith(ultimaTentativaEm: agora);
     try {
       await _drive.fazerBackup();
-      _config = _config.copyWith(ultimoBackupEm: DateTime.now());
-      await _repo.salvarUltimoBackup(_config.ultimoBackupEm!);
+      _config = _config.copyWith(ultimoBackupEm: agora);
+      await _repo.salvarUltimoBackup(agora);
       setStatus(ViewStatus.success);
     } catch (e) {
       setStatus(
@@ -132,12 +184,17 @@ class BackupViewModel extends BaseViewModel {
     }
   }
 
-  /// Retorna `true` se havia um backup na nuvem e a restauração deu certo.
-  /// Depois de restaurar, o app precisa ser reaberto — os ViewModels já
-  /// carregados em memória não sabem que o arquivo por trás mudou.
   Future<bool> restaurarBackup() async {
     _restaurando = true;
     safeNotify();
+
+    if (!await _temConexao()) {
+      setStatus(ViewStatus.error, error: _semConexaoMsg);
+      _restaurando = false;
+      safeNotify();
+      return false;
+    }
+
     try {
       final restaurou = await _drive.restaurarBackup();
       setStatus(

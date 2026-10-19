@@ -13,12 +13,7 @@ class MovimentacaoRepository {
   /// Total movimentado agrupado por motivo (ou por tipo, quando o motivo
   /// não foi preenchido) desde [desde]. Base do gráfico "para onde o
   /// estoque está indo" na aba Análise.
-  ///
-  /// A chave do mapa retornado é o `value` do enum correspondente
-  /// (ex.: 'VENDA', 'VENCIMENTO', 'AJUSTE') — use
-  /// MotivoMovimentacaoExt.fromString/TipoMovimentacaoExt.fromString para
-  /// converter de volta caso precise do label amigável.
-  Future<Map<String, int>> getResumoPorMotivo(DateTime desde) async {
+  Future<Map<String, double>> getResumoPorMotivo(DateTime desde) async {
     final db = await _db.database;
     final rows = await db.rawQuery('''
       SELECT
@@ -32,13 +27,13 @@ class MovimentacaoRepository {
 
     return {
       for (final r in rows)
-        r['chave'] as String: (r['total'] as num).toInt(),
+        r['chave'] as String: (r['total'] as num).toDouble(),
     };
   }
 
   /// Quantidade total com o [motivo] informado, no intervalo [desde, ate).
   /// Usado para o card "Vencidas" (motivo == MotivoMovimentacao.vencimento).
-  Future<int> getQuantidadePorMotivo(
+  Future<double> getQuantidadePorMotivo(
       DateTime desde,
       DateTime ate,
       MotivoMovimentacao motivo,
@@ -50,14 +45,11 @@ class MovimentacaoRepository {
       WHERE criado_em >= ? AND criado_em < ? AND motivo = ?
     ''', [desde.toIso8601String(), ate.toIso8601String(), motivo.value]);
 
-    return (res.first['total'] as num).toInt();
+    return (res.first['total'] as num).toDouble();
   }
 
   /// Valor monetário estimado perdido nos [motivos] informados, no
-  /// intervalo [desde, ate). Usa o preço de custo *atual* do lote como
-  /// aproximação — não temos o custo histórico no momento exato da perda,
-  /// então o valor pode divergir um pouco se o preço de custo do lote
-  /// mudou depois do evento. Fica como limitação conhecida.
+  /// intervalo [desde, ate).
   Future<double> getValorPerdido(
       DateTime desde,
       DateTime ate,
@@ -80,5 +72,26 @@ class MovimentacaoRepository {
     ]);
 
     return (res.first['valor'] as num).toDouble();
+  }
+
+  /// Quantidade vendida (motivo == venda) de cada produto desde [desde].
+  /// Produtos sem nenhuma venda no período simplesmente não aparecem no
+  /// mapa retornado.
+  Future<Map<int, double>> getVendidoPorProdutoDesde(DateTime desde) async {
+    final db = await _db.database;
+    final rows = await db.rawQuery('''
+      SELECT
+        l.produto_id AS produto_id,
+        SUM(m.quantidade) AS total
+      FROM movimentacoes_estoque m
+      JOIN lotes_produto l ON l.id = m.lote_id
+      WHERE m.criado_em >= ? AND m.motivo = ?
+      GROUP BY l.produto_id
+    ''', [desde.toIso8601String(), MotivoMovimentacao.venda.value]);
+
+    return {
+      for (final r in rows)
+        r['produto_id'] as int: (r['total'] as num).toDouble(),
+    };
   }
 }

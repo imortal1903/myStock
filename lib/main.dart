@@ -5,6 +5,8 @@ import 'package:provider/provider.dart';
 import 'core/theme/color_palette.dart';
 import 'core/theme/theme_controller.dart';
 import 'core/backup/backup_scheduler.dart';
+import 'core/notificacoes/notificacao_navigation.dart';
+import 'core/notificacoes/notificacao_service.dart';
 
 import 'features/crud/viewmodels/home_viewmodel.dart';
 import 'features/crud/views/home_page.dart';
@@ -14,12 +16,8 @@ import 'features/config/viewmodels/config_viewmodel.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
-
-  // Registra o callback do backup automático em segundo plano junto ao
-  // WorkManager. Precisa rodar antes do runApp() — é o que permite o
-  // agendamento feito em BackupViewModel.ativar()/definirHorario()
-  // funcionar mesmo com o app fechado.
   await BackupScheduler.inicializar();
+  await BackupScheduler.sincronizarAoAbrirApp();
 
   final settingsRepository = ConfigRepository();
   final settings = await settingsRepository.carregar();
@@ -51,6 +49,9 @@ class _MyStockAppState extends State<MyStockApp> with WidgetsBindingObserver {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      NotificacaoService.instance.checkLaunchPayload();
+    });
   }
 
   @override
@@ -61,14 +62,6 @@ class _MyStockAppState extends State<MyStockApp> with WidgetsBindingObserver {
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
-    // "paused" = o app saiu de primeiro plano (usuário trocou de app,
-    // apertou home, ou está fechando de fato). Não dá pra distinguir com
-    // certeza uma troca rápida de um fechamento definitivo — por isso só
-    // ENFILEIRAMOS a tentativa aqui (BackupScheduler.agendarAoFechar()
-    // decide, lendo a config salva, se o backup está ativado; e o próprio
-    // WorkManager evita empilhar tentativas repetidas). Nunca fazemos a
-    // chamada de rede diretamente neste callback — o processo pode ser
-    // suspenso pelo Android antes dela terminar.
     if (state == AppLifecycleState.paused) {
       BackupScheduler.agendarAoFechar();
     }
@@ -102,6 +95,7 @@ class _MyStockAppState extends State<MyStockApp> with WidgetsBindingObserver {
       child: Consumer<ThemeController>(
         builder: (context, themeController, child) {
           return MaterialApp(
+            navigatorKey: NotificacaoNavigation.navigatorKey,
             debugShowCheckedModeBanner: false,
             title: 'myStock',
 

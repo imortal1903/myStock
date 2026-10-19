@@ -59,6 +59,20 @@ class DeleteViewModel extends BaseViewModel {
     safeNotify();
   }
 
+  /// Exclusão lógica (soft delete): o lote some das listagens/sugestões,
+  /// mas o histórico de vendas/movimentações que apontam pra ele
+  /// continua intacto.
+  Future<void> desativarLote(int loteId) async {
+    await run<void>(
+          () async {
+        await _loteRepo.desativar(loteId);
+        _lotes.removeWhere((l) => l.id == loteId);
+        await NotificacaoScheduler.reschedule();
+      },
+      onError: (e) => 'Erro ao remover lote: $e',
+    );
+  }
+
   Future<void> deleteLote(int loteId) async {
     await run<void>(
           () async {
@@ -70,8 +84,7 @@ class DeleteViewModel extends BaseViewModel {
     );
   }
 
-  /// Desativa o produto (soft delete). Os lotes são preservados para não
-  /// violar chaves estrangeiras de movimentações/vendas.
+  /// Desativa o produto (soft delete).
   Future<void> deleteProduto(int produtoId) async {
     Produto? target;
     for (final p in _produtos) {

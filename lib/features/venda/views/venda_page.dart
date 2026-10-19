@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 
 import '../../../core/theme/color_palette.dart';
 import '../../../core/scanner/barcode_scanner_page.dart';
+import '../../../core/widgets/app_search_field.dart';
 import '../../crud/models/lote.dart';
 import '../../crud/models/produto.dart';
 import '../../../core/extensions/quantidade_extensions.dart';
@@ -16,8 +17,7 @@ import 'venda_config_page.dart';
 String _formatarMoeda(double v) =>
     'R\$ ${v.toStringAsFixed(2).replaceAll('.', ',')}';
 
-// ─── Tags de recomendação de lote ─────────────────────────────────────────
-
+// Tags de recomendação de lote
 enum LoteTag { recomendado, validadeProxima, menorEstoque }
 
 extension LoteTagX on LoteTag {
@@ -50,7 +50,7 @@ List<LoteTag> _ordenarTags(List<LoteTag> tags) {
 double _normalizar(num valor, num min, num max) =>
     max == min ? 0 : (valor - min) / (max - min);
 
-/// Calcula as tags de cada lote de forma independente — um lote pode
+/// Calcula as tags de cada lote de forma independente - um lote pode
 /// acumular mais de uma tag, e nenhuma tag anula as outras.
 ///
 /// [pesoValidade] (0.0 a 1.0) define o quanto o critério de validade pesa
@@ -78,8 +78,7 @@ Map<int, List<LoteTag>> _calcularTags(List<Lote> lotes, [double pesoValidade = k
   }
 
   // Recomendado: melhor equilíbrio entre validade e estoque, conforme o
-  // peso configurado pelo usuário. Pode coincidir com os lotes acima ou
-  // ser um terceiro lote diferente.
+  // peso configurado pelo usuário.
   final pesoEstoque = 1 - pesoValidade;
   final dias = lotes.map((l) => l.diasParaVencer).toList();
   final qtds = lotes.map((l) => l.quantidade).toList();
@@ -110,8 +109,7 @@ Map<int, List<LoteTag>> _calcularTags(List<Lote> lotes, [double pesoValidade = k
   return tags;
 }
 
-// ─── Página principal ───────────────────────────────────────────────────────
-
+// Página principal
 class VendasPage extends StatelessWidget {
   const VendasPage({super.key});
 
@@ -154,8 +152,7 @@ class VendasPage extends StatelessWidget {
   }
 }
 
-// ─── Top bar ──────────────────────────────────────────────────────────────────
-
+// Top bar
 class _VendasTopBar extends StatelessWidget {
   const _VendasTopBar();
 
@@ -165,8 +162,6 @@ class _VendasTopBar extends StatelessWidget {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       child: Stack(alignment: Alignment.center, children: [
-        // Título centralizado na página inteira — independente de quantos
-        // ícones existirem à direita (hoje são dois: config e carrinho).
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 96),
           child: Text('Vendas',
@@ -180,20 +175,19 @@ class _VendasTopBar extends StatelessWidget {
                   fontWeight: FontWeight.w600)),
         ),
         Row(children: [
-          Container(
-            width: 36,
-            height: 36,
-            decoration: BoxDecoration(color: context.colors.primary,
-                borderRadius: BorderRadius.circular(10)),
-            child: Icon(
-                Icons.point_of_sale_outlined, color: context.colors.onPrimary,
-                size: 20),
+          GestureDetector(
+            onTap: () => _abrirConfiguracoes(context),
+            child: Container(
+              width: 36,
+              height: 36,
+              decoration: BoxDecoration(color: context.colors.primary,
+                  borderRadius: BorderRadius.circular(10)),
+              child: Icon(
+                  Icons.settings_outlined, color: context.colors.onPrimary,
+                  size: 20),
+            ),
           ),
           const Spacer(),
-          IconButton(
-            onPressed: () => _abrirConfiguracoes(context),
-            icon: Icon(Icons.tune_rounded, color: context.colors.textPrimary),
-          ),
           Stack(clipBehavior: Clip.none, children: [
             IconButton(
               onPressed: () => _abrirCarrinho(context),
@@ -262,15 +256,6 @@ void _abrirConfiguracoes(BuildContext context) {
 /// Controle de quantidade usado tanto no seletor de lote quanto no item do
 /// carrinho: botões +/- e um campo de texto editável (aceita digitar o
 /// valor exato, ex.: "1,5" para produtos vendidos por kg).
-///
-/// Importante: isto é *inline* na árvore de widgets, sem abrir diálogo/rota
-/// nova. Uma versão anterior usava `showDialog`, mas — como este widget
-/// vive dentro de um `showModalBottomSheet` com `DraggableScrollableSheet`
-/// — abrir uma segunda rota (o diálogo) por cima gerava, em alguns casos,
-/// o erro de framework "'_dependents.isEmpty': is not true" quando o
-/// Provider notificava e reconstruía a lista ao mesmo tempo em que a rota
-/// do diálogo estava sendo desmontada. Evitar abrir uma rota nova elimina
-/// esse problema pela raiz.
 class _QuantidadeControl extends StatefulWidget {
   final double quantidade;
   final double max;
@@ -306,7 +291,7 @@ class _QuantidadeControlState extends State<_QuantidadeControl> {
     super.didUpdateWidget(old);
     // Só ressincroniza o texto quando o valor muda "por fora" (botões +/-,
     // ou o item foi removido/alterado por outra via) e o campo não está
-    // em edição no momento — evita apagar o que o usuário está digitando.
+    // em edição no momento - evita apagar o que o usuário está digitando.
     if (!_focusNode.hasFocus && old.quantidade != widget.quantidade) {
       _controller.text = widget.quantidade.formatada;
     }
@@ -338,7 +323,7 @@ class _QuantidadeControlState extends State<_QuantidadeControl> {
         valor <= 0 ||
         (!widget.fracionavel && !valor.isInteiro);
     if (invalido) {
-      _controller.text = widget.quantidade.formatada; // reverte
+      _controller.text = widget.quantidade.formatada;
       return;
     }
     final limitado = (valor > widget.max ? widget.max : valor).arredondada;
@@ -372,8 +357,7 @@ class _QuantidadeControlState extends State<_QuantidadeControl> {
   }
 }
 
-// ─── Seletor de lote ───────────────────────────────────────────────────────
-
+// Seletor de lote
 class _LoteSelectionSheet extends StatelessWidget {
   final ProdutoEstoque item;
 
@@ -481,7 +465,6 @@ class _LoteOptionTileState extends State<_LoteOptionTile> {
   Widget build(BuildContext context) {
     final lote = widget.lote;
     final tags = _ordenarTags(widget.tags);
-    // A cor de destaque do card segue a tag de maior prioridade (Recomendado > Validade > Estoque).
     final corPrincipal = tags.isNotEmpty ? _corDaTag(context, tags.first) : null;
 
     return Container(
@@ -566,8 +549,7 @@ class _LoteOptionTileState extends State<_LoteOptionTile> {
   }
 }
 
-// ─── Busca + filtro por categoria ──────────────────────────────────────────────
-
+// Busca + filtro por categoria
 class _VendaSearchSection extends StatefulWidget {
   const _VendaSearchSection();
 
@@ -589,31 +571,12 @@ class _VendaSearchSectionState extends State<_VendaSearchSection> {
     final vm = context.watch<VendaViewModel>();
 
     return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-      Row(
-        children: [
-          Expanded(
-            child: Container(
-              height: 46,
-              decoration: BoxDecoration(color: context.colors.surface,
-                  borderRadius: BorderRadius.circular(12)),
-              child: TextField(
-                controller: _ctrl,
-                style: TextStyle(color: context.colors.textSecondary, fontSize: 14),
-                onChanged: vm.buscar,
-                decoration: InputDecoration(
-                  hintText: 'Buscar produto para vender...',
-                  hintStyle: TextStyle(color: context.colors.textFaint, fontSize: 14),
-                  prefixIcon: Icon(
-                      Icons.search, color: context.colors.textFaint, size: 20),
-                  border: InputBorder.none,
-                  contentPadding: const EdgeInsets.symmetric(vertical: 14),
-                ),
-              ),
-            ),
-          ),
-          const SizedBox(width: 10),
-          _ScanButton(onScanned: (codigo) => _buscarPorCodigoEAbrirLote(context, vm, codigo)),
-        ],
+      AppSearchField(
+        controller: _ctrl,
+        onChanged: vm.buscar,
+        hintText: 'Buscar produto para vender...',
+        trailing: _ScanButton(
+            onScanned: (codigo) => _buscarPorCodigoEAbrirLote(context, vm, codigo)),
       ),
       if (vm.categorias.isNotEmpty) ...[
         const SizedBox(height: 12),
@@ -748,8 +711,7 @@ class _VendaCategoriaChip extends StatelessWidget {
   }
 }
 
-// ─── Banner de erro ─────────────────────────────────────────────────────────
-
+// Banner de erro
 class _VendaErrorBanner extends StatelessWidget {
   const _VendaErrorBanner();
 
@@ -782,8 +744,7 @@ class _VendaErrorBanner extends StatelessWidget {
   }
 }
 
-// ─── Lista de produtos ────────────────────────────────────────────────────────
-
+// Lista de produtos
 class _VendaProdutoList extends StatelessWidget {
   const _VendaProdutoList();
 
@@ -926,8 +887,7 @@ class _VendaProdutoCard extends StatelessWidget {
   }
 }
 
-// ─── Barra flutuante do carrinho ──────────────────────────────────────────────
-
+// Barra flutuante do carrinho
 class _CartSummaryBar extends StatelessWidget {
   const _CartSummaryBar();
 
@@ -976,8 +936,7 @@ class _CartSummaryBar extends StatelessWidget {
   }
 }
 
-// ─── Bottom sheet do carrinho ─────────────────────────────────────────────────
-
+// Bottom sheet do carrinho
 class _CartSheet extends StatelessWidget {
   const _CartSheet();
 
@@ -1121,7 +1080,7 @@ class _QtyButtonState extends State<_QtyButton> {
 
   void _agendarProxima() {
     final atraso = _repeticoes == 0
-        ? const Duration(milliseconds: 400) // espera antes de começar a repetir
+        ? const Duration(milliseconds: 400)
         : Duration(milliseconds: (160 - _repeticoes * 12).clamp(40, 160));
     _timer = Timer(atraso, () {
       widget.onTap();

@@ -18,14 +18,6 @@ const double kPesoValidadePadrao = 0.65;
 /// Chave usada para persistir o peso escolhido pelo usuário em disco.
 const String _kPrefsPesoValidade = 'venda_peso_validade';
 
-/// Estende `BaseViewModel` (em vez de `ChangeNotifier` puro) só para herdar
-/// a proteção de `safeNotify()` contra "used after dispose" — este
-/// ViewModel tem duas operações assíncronas genuinamente independentes e
-/// que podem estar em andamento ao mesmo tempo (busca de produtos e
-/// finalização da venda), cada uma com seu próprio loading/erro
-/// (`buscando`/`erroBusca` e `finalizando`/`erroCarrinho`). Por isso,
-/// propositalmente NÃO usa o `status`/`errorMessage`/`run()` compartilhado
-/// da base — um único status global colidiria entre as duas operações.
 class VendaViewModel extends BaseViewModel {
   final ProdutoRepository   _produtoRepo;
   final LoteRepository      _loteRepo;
@@ -46,8 +38,7 @@ class VendaViewModel extends BaseViewModel {
     _executarBusca('');
   }
 
-  // ── Categorias (filtro de busca) ────────────────────────────────────────────
-
+  // Categorias (filtro de busca)
   List<Categoria> _categorias = [];
   List<Categoria> get categorias => List.unmodifiable(_categorias);
 
@@ -68,20 +59,17 @@ class VendaViewModel extends BaseViewModel {
       _categorias = await _catRepo.getAll();
       safeNotify();
     } catch (_) {
-      // Sem categorias cadastradas ainda; o filtro simplesmente não aparece.
     }
   }
 
   /// Filtra os resultados por categoria, mantendo o termo pesquisado.
-  /// Passe `null` para voltar a mostrar todas as categorias.
   Future<void> filtrarPorCategoria(int? categoriaId) async {
     if (_categoriaFiltroId == categoriaId) return;
     _categoriaFiltroId = categoriaId;
     await _executarBusca(_ultimoTermo);
   }
 
-  // ── Ponderação do lote recomendado (Validade x Estoque) ─────────────────────
-
+  // Ponderação do lote recomendado (Validade x Estoque)
   double _pesoValidade = kPesoValidadePadrao;
 
   /// Peso de "validade próxima" no cálculo do lote recomendado (0.0 a 1.0).
@@ -93,7 +81,7 @@ class VendaViewModel extends BaseViewModel {
   bool get pesoEhPadrao => (_pesoValidade - kPesoValidadePadrao).abs() < 0.001;
 
   /// Carrega, se existir, o peso salvo anteriormente pelo usuário.
-  /// Falha silenciosamente caso as preferências não possam ser lidas —
+  /// Falha silenciosamente caso as preferências não possam ser lidas -
   /// nesse caso o valor padrão (kPesoValidadePadrao) continua em uso.
   Future<void> _carregarPesoSalvo() async {
     try {
@@ -104,7 +92,6 @@ class VendaViewModel extends BaseViewModel {
         safeNotify();
       }
     } catch (_) {
-      // Preferências indisponíveis; mantém o padrão em memória.
     }
   }
 
@@ -113,8 +100,6 @@ class VendaViewModel extends BaseViewModel {
       final prefs = await SharedPreferences.getInstance();
       await prefs.setDouble(_kPrefsPesoValidade, valor);
     } catch (_) {
-      // Falha ao persistir; a preferência ainda funciona nesta sessão,
-      // mas pode não sobreviver a um reinício do app.
     }
   }
 
@@ -131,7 +116,7 @@ class VendaViewModel extends BaseViewModel {
 
   void restaurarPesoPadrao() => atualizarPesoValidade(kPesoValidadePadrao);
 
-  // ── Busca de produtos (já com resumo de estoque) ────────────────────────────
+  // Busca de produtos (já com resumo de estoque)
   List<ProdutoEstoque> _resultados = [];
   List<ProdutoEstoque> get resultados => _resultados;
 
@@ -176,7 +161,7 @@ class VendaViewModel extends BaseViewModel {
     }
   }
 
-  // ── Carrinho ───────────────────────────────────────────────────────────────
+  // Carrinho
   final List<ItemCarrinho> _carrinho = [];
   List<ItemCarrinho> get carrinho => List.unmodifiable(_carrinho);
 
@@ -191,12 +176,6 @@ class VendaViewModel extends BaseViewModel {
       .toList();
 
   /// Adiciona [quantidade] unidades do [lote] de [item] ao carrinho.
-  ///
-  /// Para produtos cuja unidade não permite fração (ver
-  /// [Produto.permiteFracao] — un, cx, pct), [quantidade] precisa ser um
-  /// número inteiro (ex.: 2, não 1.5) — não faz sentido vender "meio
-  /// pacote" ou "meia unidade". Para kg/g/L/mL, valores fracionários (ex.:
-  /// 1.5, 10.25) são aceitos normalmente.
   Future<void> adicionarAoCarrinho(ProdutoEstoque item, Lote lote, {double quantidade = 1}) async {
     _erroCarrinho = null;
     final produto = item.produto;
@@ -239,9 +218,7 @@ class VendaViewModel extends BaseViewModel {
     safeNotify();
   }
 
-  /// Atualiza a quantidade de [item] já no carrinho. Aplica a mesma regra
-  /// de fracionamento de [adicionarAoCarrinho] — unidades como un/cx/pct
-  /// só aceitam quantidades inteiras.
+  /// Atualiza a quantidade de [item] já no carrinho.
   void atualizarQuantidade(ItemCarrinho item, double quantidade) {
     if (quantidade <= 0) {
       removerDoCarrinho(item);
@@ -281,7 +258,7 @@ class VendaViewModel extends BaseViewModel {
     safeNotify();
   }
 
-  // ── Checkout ───────────────────────────────────────────────────────────────
+  // Checkout
   bool _finalizando = false;
   bool get finalizando => _finalizando;
 

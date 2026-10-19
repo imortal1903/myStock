@@ -5,6 +5,14 @@ import '../../core/extensions/date_extensions.dart';
 
 import '../../features/crud/models/lote.dart';
 import 'notificacao_config.dart';
+import 'notificacao_navigation.dart';
+
+/// Chamado quando o usuário toca em uma notificação com o app em segundo
+/// plano/finalizado. Não há acesso à UI neste isolate — o toque real é
+/// tratado depois, via [NotificacaoService.checkLaunchPayload] ou pelo
+/// callback normal quando o app já está em primeiro plano.
+@pragma('vm:entry-point')
+void notificacaoBackgroundHandler(NotificationResponse response) {}
 
 class NotificacaoService {
   NotificacaoService._();
@@ -16,8 +24,6 @@ class NotificacaoService {
   static const _channelId   = 'estoque_validade';
   static const _channelName = 'Validade de Produtos';
   static const _channelDesc = 'Alertas de lotes próximos ao vencimento';
-
-  // ── Init ───────────────────────────────────────────────────────────────────
 
   Future<void> init() async {
     if (_initialized) return;
@@ -31,6 +37,10 @@ class NotificacaoService {
       settings: const InitializationSettings(
         android: AndroidInitializationSettings('@mipmap/ic_launcher'),
       ),
+      onDidReceiveNotificationResponse: (response) {
+        NotificacaoNavigation.handlePayload(response.payload);
+      },
+      onDidReceiveBackgroundNotificationResponse: notificacaoBackgroundHandler,
     );
 
     await _plugin
@@ -48,7 +58,17 @@ class NotificacaoService {
     _initialized = true;
   }
 
-  // ── Permissão ────
+  /// Chame isso uma vez, logo depois do `runApp`, para tratar o caso em que
+  /// o app estava fechado e foi aberto por um toque em notificação.
+  Future<void> checkLaunchPayload() async {
+    await _ensureInit();
+    final details = await _plugin.getNotificationAppLaunchDetails();
+    if (details?.didNotificationLaunchApp ?? false) {
+      await NotificacaoNavigation.handlePayload(
+        details?.notificationResponse?.payload,
+      );
+    }
+  }
 
   AndroidFlutterLocalNotificationsPlugin? get _android =>
       _plugin.resolvePlatformSpecificImplementation<
@@ -60,7 +80,7 @@ class NotificacaoService {
     return ok ?? false;
   }
 
-  /// Garante permissão de alarme exato (Android 12+). Retorna `true` em
+  /// Garante permissão de alarme exato. Retorna `true` em
   /// plataformas que não exigem essa permissão.
   Future<bool> ensureExactAlarmPermission() async {
     await _ensureInit();
@@ -73,15 +93,11 @@ class NotificacaoService {
     return await android.canScheduleExactNotifications() ?? false;
   }
 
-  /// Pede notificações + alarme exato de uma vez.
   Future<bool> requestAllPermissions() async {
     await requestPermission();
     return ensureExactAlarmPermission();
   }
 
-  // ── Agendamento por LOTES ─────────────────────────────────────────────────
-  /// Cancela tudo e reagenda com base nos lotes e na configuração.
-  /// [nomes] mapeia produto_id → nome do produto.
   Future<void> scheduleForAllLotes(
       List<Lote> lotes,
       Map<int, String> nomes,
@@ -93,60 +109,88 @@ class NotificacaoService {
 
     final now = DateTime.now();
 
+    final porProduto = <int, List<Lote>>{};
     for (final lote in lotes) {
       if (lote.estaVencido) continue;
+      porProduto.putIfAbsent(lote.produtoId, () => []).add(lote);
+    }
 
-      final nomeProduto = nomes[lote.produtoId] ?? 'Produto';
-      final loteLabel = lote.numeroLote ?? '#${lote.id}';
+    for (final entry in porProduto.entries) {
+      final produtoId      = entry.key;
+      final lotesDoProduto = entry.value;
+      final nomeProduto    = nomes[produtoId] ?? 'Produto';
+      final groupKey       = _groupKey(produtoId);
 
-      var dataAtual = _withTime(
-        lote.dataValidade.subtract(Duration(days: config.diasAntes)),
-        config.hora,
-        config.minuto,
-      );
+      final linhasResumo   = <String>[];
+      DateTime? primeiraData;
 
-      while (dataAtual.isBefore(now)) {
-        dataAtual = dataAtual.add(
-          Duration(hours: config.intervaloHoras),
+      for (final lote in lotesDoProduto) {
+        final loteLabel = lote.numeroLote ?? '#${lote.id}';
+
+        var dataAtual = _withTime(
+          lote.dataValidade.subtract(Duration(days: config.diasAntes)),
+          config.hora,
+          config.minuto,
+        );
+
+        while (dataAtual.isBefore(now)) {
+          dataAtual = dataAtual.add(
+            Duration(hours: config.intervaloHoras),
+          );
+        }
+
+        final limite = _withTime(
+          lote.dataValidade,
+          23,
+          59,
+        );
+
+        int idx = 0;
+
+        while (!dataAtual.isAfter(limite) && idx < 20) {
+          final dias = lote.dataValidade.differenceInDays(dataAtual);
+
+          await _zonedSchedule(
+            id: _buildId(lote.id!, idx),
+            titulo: _titulo(dias, nomeProduto),
+            corpo: _corpo(
+              dias,
+              loteLabel,
+              lote.validadeFormatada,
+            ),
+            when: dataAtual,
+            groupKey: groupKey,
+            produtoId: produtoId,
+          );
+
+          primeiraData ??= dataAtual;
+
+          dataAtual = dataAtual.add(
+            Duration(hours: config.intervaloHoras),
+          );
+
+          idx++;
+        }
+
+        linhasResumo.add(
+          'Lote $loteLabel vence em ${lote.validadeFormatada}',
         );
       }
 
-      final limite = _withTime(
-        lote.dataValidade,
-        23,
-        59,
-      );
-
-      int idx = 0;
-
-      while (!dataAtual.isAfter(limite) && idx < 20) {
-        final dias = lote.dataValidade.differenceInDays(dataAtual);
-
-        await _zonedSchedule(
-          id: _buildId(lote.id!, idx),
-          titulo: _titulo(dias, nomeProduto),
-          corpo: _corpo(
-            dias,
-            loteLabel,
-            lote.validadeFormatada,
-          ),
-          when: dataAtual,
+      if (primeiraData != null) {
+        await _zonedScheduleResumo(
+          id: _buildSummaryId(produtoId),
+          nomeProduto: nomeProduto,
+          linhas: linhasResumo,
+          groupKey: groupKey,
+          produtoId: produtoId,
+          when: primeiraData,
         );
-
-        dataAtual = dataAtual.add(
-          Duration(hours: config.intervaloHoras),
-        );
-
-        idx++;
       }
     }
   }
 
-  // ── Cancelamento ──────────────────────────────────────────────────────────
-
   Future<void> cancelAll() => _plugin.cancelAll();
-
-  // ── Teste imediato ────────────────────────────────────────────────────────
 
   Future<void> showTest() => _plugin.show(
     id: 0,
@@ -155,9 +199,9 @@ class NotificacaoService {
     notificationDetails: _details(),
   );
 
-  // ── Helpers ───────────────────────────────────────────────────────────────
-
   int    _buildId(int loteId, int idx) => (loteId.abs() % 100000) + idx * 100000;
+  int _buildSummaryId(int produtoId) => 900000000 + (produtoId.abs() % 90000000);
+  String _groupKey(int produtoId) => 'produto_$produtoId';
 
   String _titulo(int dias, String nome) {
     if (dias <= 0) return '⚠️ Lote de $nome vence hoje!';
@@ -172,13 +216,20 @@ class NotificacaoService {
   DateTime _withTime(DateTime d, int h, int m) =>
       DateTime(d.year, d.month, d.day, h, m);
 
-  NotificationDetails _details() => const NotificationDetails(
+  NotificationDetails _details({
+    String? groupKey,
+    bool isSummary = false,
+    StyleInformation? styleInformation,
+  }) => NotificationDetails(
     android: AndroidNotificationDetails(
       _channelId, _channelName,
       channelDescription: _channelDesc,
       importance: Importance.high,
       priority:   Priority.high,
       icon:       '@mipmap/ic_launcher',
+      groupKey: groupKey,
+      setAsGroupSummary: isSummary,
+      styleInformation: styleInformation,
     ),
   );
 
@@ -187,6 +238,8 @@ class NotificacaoService {
     required String   titulo,
     required String   corpo,
     required DateTime when,
+    String? groupKey,
+    int?    produtoId,
   }) async {
     await _ensureInit();
     await _plugin.zonedSchedule(
@@ -194,10 +247,46 @@ class NotificacaoService {
       title: titulo,
       body: corpo,
       scheduledDate: tz.TZDateTime.from(when, tz.local),
-      notificationDetails: _details(),
+      notificationDetails: _details(groupKey: groupKey),
       androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
+      payload: produtoId != null ? _payload(produtoId) : null,
     );
   }
+
+  Future<void> _zonedScheduleResumo({
+    required int          id,
+    required String       nomeProduto,
+    required List<String> linhas,
+    required String       groupKey,
+    required int          produtoId,
+    required DateTime     when,
+  }) async {
+    await _ensureInit();
+
+    final titulo = linhas.length == 1
+        ? '📦 $nomeProduto'
+        : '📦 $nomeProduto - ${linhas.length} lotes por vencer';
+
+    await _plugin.zonedSchedule(
+      id: id,
+      title: titulo,
+      body: linhas.first,
+      scheduledDate: tz.TZDateTime.from(when, tz.local),
+      notificationDetails: _details(
+        groupKey: groupKey,
+        isSummary: true,
+        styleInformation: InboxStyleInformation(
+          linhas,
+          contentTitle: titulo,
+          summaryText: nomeProduto,
+        ),
+      ),
+      androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
+      payload: _payload(produtoId),
+    );
+  }
+
+  String _payload(int produtoId) => 'produto:$produtoId';
 
   Future<void> _ensureInit() async {
     if(!_initialized)await init();

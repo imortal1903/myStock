@@ -12,10 +12,13 @@ import '../../analise/viewmodels/analise_viewmodel.dart';
 import '../../analise/views/analise_page.dart';
 import '../../../core/extensions/quantidade_extensions.dart';
 import '../../../core/theme/color_palette.dart';
+import '../../../core/promocoes/sugestao_promocional_service.dart';
+import '../../../core/widgets/app_search_field.dart';
 import '../../config/views/config_page.dart';
+import '../repositories/produto_repository.dart';
+import '../repositories/lote_repository.dart';
 
-// ─── Shell global ───
-
+// Shell global
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
   @override
@@ -27,9 +30,6 @@ class _HomePageState extends State<HomePage> {
 
   late final VendaViewModel _vendaViewModel = VendaViewModel();
   late final AnaliseViewModel _analiseViewModel = AnaliseViewModel();
-
-  /// Abas e itens da bottom nav vêm da MESMA lista: adicionar uma aba
-  /// aqui já adiciona o botão correspondente, sem risco de índice inválido.
   late final List<_Tab> _tabs = [
     _Tab(
       icon: Icons.home_outlined,
@@ -93,8 +93,7 @@ class _Tab {
   });
 }
 
-// ─── Bottom Nav ───
-
+// Bottom Nav
 class _BottomNav extends StatelessWidget {
   final List<_Tab> tabs;
   final int current;
@@ -150,8 +149,7 @@ class _BottomNav extends StatelessWidget {
   }
 }
 
-// ─── Conteúdo CRUD ───
-
+// Conteúdo CRUD
 class _CrudContent extends StatelessWidget {
   const _CrudContent();
 
@@ -177,9 +175,10 @@ class _CrudContent extends StatelessWidget {
                 SizedBox(height: 24),
                 _QuickActions(),
                 SizedBox(height: 24),
+                _SugestoesPromocionaisCard(),
                 _SectionHeader(title: 'Produtos'),
                 SizedBox(height: 12),
-                _ProductList(),
+                _ProdutoList(),
                 SizedBox(height: 20),
               ],
             ),
@@ -190,8 +189,7 @@ class _CrudContent extends StatelessWidget {
   );
 }
 
-// ─── Top Bar ───
-
+// Top Bar
 class _TopBar extends StatelessWidget {
   const _TopBar();
 
@@ -206,8 +204,6 @@ class _TopBar extends StatelessWidget {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       child: Stack(alignment: Alignment.center, children: [
-        // Título centralizado na página inteira — mesmo padrão usado em
-        // Vendas e Análise, independente da largura dos ícones ao redor.
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 96),
           child: Text('Estoque',
@@ -247,8 +243,7 @@ class _TopBar extends StatelessWidget {
   }
 }
 
-// ─── Busca + Filtro por categoria ───
-
+// Busca + Filtro por categoria
 class _SearchSection extends StatefulWidget {
   const _SearchSection();
   @override
@@ -278,32 +273,11 @@ class _SearchSectionState extends State<_SearchSection> {
     final corLimpar = temFiltro ? colors.accent : colors.textFaint;
 
     return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-      Row(children: [
-        Expanded(
-          child: Container(
-            height: 46,
-            decoration: BoxDecoration(
-              color: colors.surface,
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: TextField(
-              controller: _ctrl,
-              style: TextStyle(color: colors.textSecondary, fontSize: 14),
-              onChanged: vm.onSearchChanged,
-              decoration: InputDecoration(
-                hintText: 'Pesquisar produto...',
-                hintStyle:
-                TextStyle(color: colors.textFaint, fontSize: 14),
-                prefixIcon:
-                Icon(Icons.search, color: colors.textFaint, size: 20),
-                border: InputBorder.none,
-                contentPadding: const EdgeInsets.symmetric(vertical: 14),
-              ),
-            ),
-          ),
-        ),
-        const SizedBox(width: 12),
-        GestureDetector(
+      AppSearchField(
+        controller: _ctrl,
+        onChanged: vm.onSearchChanged,
+        hintText: 'Pesquisar produto...',
+        trailing: GestureDetector(
           onTap: temFiltro ? () => _clear(vm) : null,
           child: Row(children: [
             Text('Limpar',
@@ -316,7 +290,7 @@ class _SearchSectionState extends State<_SearchSection> {
             Icon(Icons.close, color: corLimpar, size: 18),
           ]),
         ),
-      ]),
+      ),
       if (vm.categorias.isNotEmpty) ...[
         const SizedBox(height: 12),
         _CategoryChips(vm: vm),
@@ -394,8 +368,7 @@ class _CategoryChip extends StatelessWidget {
   }
 }
 
-// ─── Quick Actions ───
-
+// Quick Actions
 class _QuickActions extends StatelessWidget {
   const _QuickActions();
 
@@ -458,8 +431,7 @@ class _ActionBtn extends StatelessWidget {
   );
 }
 
-// ─── Section Header ───
-
+// Section Header
 class _SectionHeader extends StatelessWidget {
   final String title;
   const _SectionHeader({required this.title});
@@ -473,10 +445,9 @@ class _SectionHeader extends StatelessWidget {
       ));
 }
 
-// ─── Product List ───
-
-class _ProductList extends StatelessWidget {
-  const _ProductList();
+// Produto List
+class _ProdutoList extends StatelessWidget {
+  const _ProdutoList();
 
   Widget _centered(Widget child) => Center(
     child: Padding(
@@ -516,16 +487,15 @@ class _ProductList extends StatelessWidget {
     }
 
     return Column(
-      children: vm.items.map((item) => _ProductCard(item: item)).toList(),
+      children: vm.items.map((item) => _ProdutoCard(item: item)).toList(),
     );
   }
 }
 
-// ─── Product Card ───
-
-class _ProductCard extends StatelessWidget {
+// Product Card
+class _ProdutoCard extends StatelessWidget {
   final ProdutoComLotes item;
-  const _ProductCard({required this.item});
+  const _ProdutoCard({required this.item});
 
   @override
   Widget build(BuildContext context) {
@@ -660,5 +630,327 @@ class _ProductCard extends StatelessWidget {
         ]),
       ),
     );
+  }
+}
+
+// Sugestões promocionais
+class _SugestoesPromocionaisCard extends StatefulWidget {
+  const _SugestoesPromocionaisCard();
+
+  @override
+  State<_SugestoesPromocionaisCard> createState() =>
+      _SugestoesPromocionaisCardState();
+}
+
+class _SugestoesPromocionaisCardState
+    extends State<_SugestoesPromocionaisCard> {
+  final _service = SugestaoPromocionalService();
+  List<SugestaoPromocional>? _sugestoes;
+  late final HomeViewModel _homeViewModel;
+
+  @override
+  void initState() {
+    super.initState();
+    _homeViewModel = context.read<HomeViewModel>();
+    _homeViewModel.addListener(_carregar);
+    _carregar();
+  }
+
+  @override
+  void dispose() {
+    _homeViewModel.removeListener(_carregar);
+    super.dispose();
+  }
+
+  Future<void> _carregar() async {
+    try {
+      final sugestoes = await _service.gerarSugestoes();
+      if (mounted) setState(() => _sugestoes = sugestoes);
+    } catch (_) {
+      if (mounted) setState(() => _sugestoes = const []);
+    }
+  }
+
+  Future<void> _abrirProduto(BuildContext context, int produtoId) async {
+    final produto = await ProdutoRepository().getById(produtoId);
+    if (produto == null || !context.mounted) return;
+
+    final lotes = await LoteRepository().getByProduto(produtoId);
+    if (!context.mounted) return;
+
+    await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => ProdutoDetailPage(
+          item: ProdutoComLotes(produto: produto, lotes: lotes),
+        ),
+      ),
+    );
+  }
+
+  void _abrirLista(BuildContext context, List<SugestaoPromocional> sugestoes) {
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: context.colors.surface,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      builder: (sheetCtx) => _SugestoesSheet(
+        sugestoes: sugestoes,
+        onAbrir: (produtoId) {
+          Navigator.pop(sheetCtx);
+          _abrirProduto(context, produtoId);
+        },
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final sugestoes = _sugestoes;
+    if (sugestoes == null || sugestoes.isEmpty) return const SizedBox.shrink();
+
+    final colors = context.colors;
+    int contar(MotivoSugestao m) =>
+        sugestoes.where((s) => s.motivo == m).length;
+    final vencendo = contar(MotivoSugestao.vencimentoProximo);
+    final estoqueBaixo = contar(MotivoSugestao.estoqueBaixo);
+    final baixaSaida = contar(MotivoSugestao.baixaRotatividade);
+    final produtos = sugestoes.map((s) => s.produtoId).toSet().length;
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 24),
+      child: GestureDetector(
+        onTap: () => _abrirLista(context, sugestoes),
+        child: Container(
+          padding: const EdgeInsets.all(14),
+          decoration: BoxDecoration(
+            color: colors.surface,
+            borderRadius: BorderRadius.circular(14),
+          ),
+          child: Row(children: [
+            Container(
+              width: 38,
+              height: 38,
+              decoration: BoxDecoration(
+                color: colors.accent.withValues(alpha: 0.15),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Icon(Icons.campaign_outlined,
+                  color: colors.accent, size: 20),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('Sugestões',
+                      style: TextStyle(
+                        color: colors.textPrimary,
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                      )),
+                  const SizedBox(height: 2),
+                  Text(
+                    produtos == 1
+                        ? '1 produto precisa de atenção'
+                        : '$produtos produtos precisam de atenção',
+                    style: TextStyle(color: colors.textFaint, fontSize: 12),
+                  ),
+                  const SizedBox(height: 8),
+                  Wrap(spacing: 6, runSpacing: 6, children: [
+                    if (vencendo > 0)
+                      _ContagemChip(
+                        icone: Icons.schedule,
+                        texto: '$vencendo vencendo',
+                        cor: Colors.orangeAccent,
+                      ),
+                    if (estoqueBaixo > 0)
+                      _ContagemChip(
+                        icone: Icons.production_quantity_limits,
+                        texto: '$estoqueBaixo estoque baixo',
+                        cor: colors.danger,
+                      ),
+                    if (baixaSaida > 0)
+                      _ContagemChip(
+                        icone: Icons.trending_down,
+                        texto: '$baixaSaida baixa saída',
+                        cor: colors.accent,
+                      ),
+                  ]),
+                ],
+              ),
+            ),
+            Icon(Icons.chevron_right, color: colors.textGhost, size: 20),
+          ]),
+        ),
+      ),
+    );
+  }
+}
+
+class _ContagemChip extends StatelessWidget {
+  final IconData icone;
+  final String texto;
+  final Color cor;
+  const _ContagemChip({
+    required this.icone,
+    required this.texto,
+    required this.cor,
+  });
+
+  @override
+  Widget build(BuildContext context) => Container(
+    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+    decoration: BoxDecoration(
+      color: cor.withValues(alpha: 0.15),
+      borderRadius: BorderRadius.circular(8),
+    ),
+    child: Row(mainAxisSize: MainAxisSize.min, children: [
+      Icon(icone, color: cor, size: 13),
+      const SizedBox(width: 4),
+      Text(texto,
+          style: TextStyle(
+            color: cor,
+            fontSize: 11.5,
+            fontWeight: FontWeight.w600,
+          )),
+    ]),
+  );
+}
+
+/// Lista completa das sugestões, agrupada por motivo.
+class _SugestoesSheet extends StatelessWidget {
+  final List<SugestaoPromocional> sugestoes;
+  final ValueChanged<int> onAbrir;
+  const _SugestoesSheet({required this.sugestoes, required this.onAbrir});
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.colors;
+
+    final grupos = <(MotivoSugestao, String, IconData, Color)>[
+      (
+      MotivoSugestao.vencimentoProximo,
+      'Vencimento próximo',
+      Icons.schedule,
+      Colors.orangeAccent,
+      ),
+      (
+      MotivoSugestao.estoqueBaixo,
+      'Estoque baixo',
+      Icons.production_quantity_limits,
+      colors.danger,
+      ),
+      (
+      MotivoSugestao.baixaRotatividade,
+      'Baixa saída',
+      Icons.trending_down,
+      colors.accent,
+      ),
+    ];
+
+    return DraggableScrollableSheet(
+      initialChildSize: 0.6,
+      minChildSize: 0.35,
+      maxChildSize: 0.92,
+      expand: false,
+      builder: (ctx, scrollController) => ListView(
+        controller: scrollController,
+        padding: const EdgeInsets.fromLTRB(16, 10, 16, 24),
+        children: [
+          Center(
+            child: Container(
+              width: 36,
+              height: 4,
+              decoration: BoxDecoration(
+                color: colors.divider,
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+          ),
+          const SizedBox(height: 14),
+          Text('Sugestões',
+              style: TextStyle(
+                color: colors.textPrimary,
+                fontSize: 16,
+                fontWeight: FontWeight.w700,
+              )),
+          for (final (motivo, titulo, icone, cor) in grupos)
+            ..._grupo(
+              context,
+              sugestoes.where((s) => s.motivo == motivo).toList(),
+              titulo,
+              icone,
+              cor,
+            ),
+        ],
+      ),
+    );
+  }
+
+  List<Widget> _grupo(
+      BuildContext context,
+      List<SugestaoPromocional> itens,
+      String titulo,
+      IconData icone,
+      Color cor,
+      ) {
+    if (itens.isEmpty) return const [];
+    final colors = context.colors;
+
+    return [
+      const SizedBox(height: 18),
+      Row(children: [
+        Icon(icone, color: cor, size: 18),
+        const SizedBox(width: 6),
+        Text('$titulo (${itens.length})',
+            style: TextStyle(
+              color: colors.textPrimary,
+              fontSize: 14,
+              fontWeight: FontWeight.w600,
+            )),
+      ]),
+      const SizedBox(height: 4),
+      Text(itens.first.texto,
+          style: TextStyle(color: colors.textFaint, fontSize: 12, height: 1.3)),
+      const SizedBox(height: 8),
+      for (final s in itens)
+        InkWell(
+          onTap: () => onAbrir(s.produtoId),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: 11),
+            child: Row(children: [
+              Container(
+                width: 3,
+                height: 18,
+                decoration: BoxDecoration(
+                  color: cor,
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(s.produtoNome,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      color: colors.textPrimary,
+                      fontSize: 13.5,
+                    )),
+              ),
+              if (s.detalhe != null)
+                Padding(
+                  padding: const EdgeInsets.only(right: 6),
+                  child: Text(s.detalhe!,
+                      style:
+                      TextStyle(color: colors.textFaint, fontSize: 12)),
+                ),
+              Icon(Icons.chevron_right, color: colors.textGhost, size: 18),
+            ]),
+          ),
+        ),
+    ];
   }
 }

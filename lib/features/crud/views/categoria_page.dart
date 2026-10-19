@@ -236,7 +236,7 @@ class _CategoriaTile extends StatelessWidget {
   }
 }
 
-// ── Formulário ──
+// Formulário
 
 class _CategoriaForm extends StatefulWidget {
   const _CategoriaForm();

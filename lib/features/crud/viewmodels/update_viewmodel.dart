@@ -71,11 +71,9 @@ class UpdateViewModel extends BaseViewModel {
   Produto? _selectedProduto;
   Lote? _selectedLote;
   String? _codigoBarrasDuplicado;
-
-  /// O usuário mexeu no dropdown de status? Se sim, respeitamos a escolha.
   bool _statusLoteManual = false;
 
-  // ── Campos editáveis ──
+  // Campos editáveis
   String editNome = '';
   String editDescricao = '';
   String editCodigoBarras = '';
@@ -92,27 +90,20 @@ class UpdateViewModel extends BaseViewModel {
   DateTime editDataEntrada = DateTime.now();
   LoteStatus editStatusLote = LoteStatus.ativo;
 
-  // ── Getters ──
+  // Getters
   List<Produto> get produtos => List.unmodifiable(_produtos);
   List<Categoria> get categorias => List.unmodifiable(_categorias);
   List<Lote> get lotes => List.unmodifiable(_lotes);
   Map<int, EstoqueResumo> get estoquePorProduto => _estoquePorProduto;
   Produto? get selectedProduto => _selectedProduto;
   Lote? get selectedLote => _selectedLote;
-
-  /// Fonte única da verdade: `Produto.unidades`.
   static List<String> get unidades => Produto.unidades;
-
-  /// true se a unidade atualmente selecionada no formulário (aba "Dados")
-  /// aceita quantidade fracionada (kg/g/L/mL). Usado para adaptar o campo
-  /// de quantidade do lote — tanto na validação quanto na formatação
-  /// exibida ao usuário.
   bool get permiteFracao => Produto.unidadesFracionaveis.contains(editUnidade);
 
   EstoqueResumo estoqueDe(Produto p) =>
       _estoquePorProduto[p.id] ?? EstoqueResumo.vazio;
 
-  // ── Load ──
+  // Load
   Future<void> loadProdutos() async {
     await run<void>(
           () async {
@@ -130,11 +121,10 @@ class UpdateViewModel extends BaseViewModel {
       _categorias = await _catRepo.getAll();
       safeNotify();
     } catch (_) {
-      // categoria é opcional na tela
     }
   }
 
-  // ── Seleção ──
+  // Seleção
   Future<void> selectProduto(Produto p) async {
     _selectedProduto = p;
     editNome = p.nome;
@@ -147,9 +137,6 @@ class UpdateViewModel extends BaseViewModel {
     _selectedLote = null;
     safeNotify();
 
-    // Mesmo padrão de DeleteViewModel.selectProduto(): usa run() em vez de
-    // try/catch manual, para que `isLoading` reflita corretamente o
-    // carregamento dos lotes (antes ficava sempre `false` aqui).
     await run<void>(
           () async {
         await _loteRepo.atualizarStatusVencidos();
@@ -163,9 +150,6 @@ class UpdateViewModel extends BaseViewModel {
   void selectLote(Lote l) {
     _selectedLote = l;
     editNumeroLote = l.numeroLote ?? '';
-    // Se a unidade não permite fração (un/cx/pct), não mostra parte
-    // decimal ao usuário mesmo que o valor salvo tenha uma por algum
-    // motivo (ex.: dado legado) — arredonda só na exibição.
     editQuantidadeText =
     permiteFracao ? l.quantidade.formatada : l.quantidade.round().toString();
     editPrecoCustoText = l.precoCusto.toStringAsFixed(2);
@@ -182,10 +166,6 @@ class UpdateViewModel extends BaseViewModel {
     final produto = _selectedProduto;
     if (produto == null) return;
 
-    // Placeholder apenas para abrir o form vazio e guardar produtoId —
-    // os valores reais (inclusive quantidadeInicial) só são definidos em
-    // saveLote(), que reconstrói o lote do zero com Lote.novo() para este
-    // caso. Não confiar no `quantidade`/`quantidadeInicial` deste objeto.
     _selectedLote = Lote.novo(
       produtoId: produto.id!,
       quantidade: 0,
@@ -220,21 +200,16 @@ class UpdateViewModel extends BaseViewModel {
     safeNotify();
   }
 
-  // ── Setters ──
+  // Setters
   void setUnidade(String u) {
     editUnidade = u;
     safeNotify();
-    // "editUnidade" já reflete a unidade nova aqui, então `permiteFracao`
-    // (getter) já responde pela unidade recém-selecionada.
     if (!permiteFracao) _arredondarLotesParaBaixo();
   }
 
-  /// Quando a unidade deixa de permitir fração (ex.: kg → un), qualquer
+  /// Quando a unidade deixa de permitir fração, qualquer
   /// quantidade fracionária dos lotes já carregados desse produto deixa de
-  /// fazer sentido — "16,5 un" não existe. Arredonda para BAIXO (nunca
-  /// para cima — não queremos inflar estoque por causa de uma troca de
-  /// unidade) e já persiste, sem esperar o usuário salvar os dados do
-  /// produto — daí o "na hora".
+  /// fazer sentido, "1,5 un" não existe. Arredonda para baixo.
   Future<void> _arredondarLotesParaBaixo() async {
     final alterados = <Lote>[];
 
@@ -248,9 +223,6 @@ class UpdateViewModel extends BaseViewModel {
       }
     }
 
-    // Se houver um lote em edição no momento (defensivo — hoje a aba
-    // "Dados" e o formulário de lote não ficam visíveis ao mesmo tempo,
-    // mas evita inconsistência caso isso mude no futuro).
     final loteSelecionado = _selectedLote;
     if (loteSelecionado != null) {
       final piso = loteSelecionado.quantidade.floorToDouble();
@@ -265,7 +237,7 @@ class UpdateViewModel extends BaseViewModel {
       return;
     }
 
-    safeNotify(); // feedback imediato na lista, antes mesmo de persistir
+    safeNotify();
 
     try {
       for (final l in alterados) {
@@ -274,8 +246,6 @@ class UpdateViewModel extends BaseViewModel {
       _estoquePorProduto = await _loteRepo.getResumoEstoquePorProduto();
       safeNotify();
     } catch (_) {
-      // Falha ao persistir: o valor local já mudou (feedback imediato ao
-      // usuário); uma reabertura do produto recarrega do banco.
     }
   }
 
@@ -315,7 +285,7 @@ class UpdateViewModel extends BaseViewModel {
     return LoteStatus.ativo;
   }
 
-  // ── Validators ──
+  // Validators
   String? validateNome(String? v) => ProdutoValidators.nome(v);
 
   String? validateCodigoBarras(String? v) => ProdutoValidators.codigoBarras(
@@ -338,7 +308,7 @@ class UpdateViewModel extends BaseViewModel {
     maiorQueZero: true,
   );
 
-  // ── Save produto ──
+  // Save produto
   Future<void> saveProduto() async {
     final produto = _selectedProduto;
     if (produto == null) return;
@@ -385,7 +355,7 @@ class UpdateViewModel extends BaseViewModel {
     );
   }
 
-  // ── Save lote ──
+  // Save lote
   Future<void> saveLote() async {
     final lote = _selectedLote;
     if (lote == null) return;
@@ -397,27 +367,14 @@ class UpdateViewModel extends BaseViewModel {
     }
     loteFormKey.currentState?.save();
 
-    await run<void>(
-          () async {
-        // Proteção extra: se por algum motivo o validador foi contornado
-        // (ex.: chamada programática), nunca persiste decimal para uma
-        // unidade que não permite fração.
+    await run<void>(() async {
         final quantidade = permiteFracao
             ? editQuantidadeText.toDoubleOrZero()
             : editQuantidadeText.toDoubleOrZero().roundToDouble();
 
-        // Respeita a escolha manual do usuário; senão, calcula.
         final novoStatus = _statusLoteManual ? editStatusLote : statusSugerido;
 
         final isNew = lote.id == null;
-
-        // IMPORTANTE: para lote novo, não usar lote.copyWith(...) aqui.
-        // `lote` neste caso é o placeholder de prepareNewLote() (criado
-        // com quantidade 0), e copyWith() propositalmente preserva
-        // quantidadeInicial do objeto original — usá-lo faria todo lote
-        // novo salvar quantidadeInicial = 0 para sempre, mesmo com a
-        // quantidade real preenchida no form. Lote.novo() reconstrói do
-        // zero e captura o snapshot correto a partir da quantidade final.
         final Lote updated;
         if (isNew) {
           updated = Lote.novo(
@@ -433,8 +390,6 @@ class UpdateViewModel extends BaseViewModel {
             criadoEm: DateTime.now(),
           );
         } else {
-          // Edição de lote existente: copyWith preserva corretamente o
-          // quantidadeInicial original — é isso que queremos aqui.
           updated = lote.copyWith(
             numeroLote: editNumeroLote.nullIfEmpty,
             quantidade: quantidade,

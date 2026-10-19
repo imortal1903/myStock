@@ -24,16 +24,8 @@ class NotificacaoViewModel extends BaseViewModel {
   NotificacaoConfig _config = const NotificacaoConfig();
 
   NotificacaoConfig get config => _config;
-
-  /// Alias mantido para compatibilidade com a UI existente. Antes disto
-  /// era um bool próprio (`_loading`) mantido manualmente em paralelo a
-  /// `isLoading` (herdado da base) — os dois podiam divergir, já que
-  /// `_load()` nunca chamava `setStatus(ViewStatus.loading)`. Agora
-  /// `_load()` passa por `run()`, então os dois sempre concordam.
   bool get loading => isLoading;
   bool get isSaving => isLoading;
-
-  /// Aliases mantidos para compatibilidade com a UI existente.
   String? get error => errorMessage;
   bool get saved => status == ViewStatus.success;
 

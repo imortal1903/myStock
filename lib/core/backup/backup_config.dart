@@ -1,30 +1,23 @@
 const Object _unset = Object();
 
 /// Menor intervalo aceito pelo WorkManager/JobScheduler do Android para
-/// tarefas periódicas — não é uma escolha nossa, é um limite fixo do
-/// sistema operacional. Qualquer valor menor é rejeitado/ajustado pelo
-/// próprio Android.
+/// tarefas periódicas.
 const int kIntervaloMinimoMinutos = 15;
 
-/// Configuração do backup em nuvem — persistida via [BackupConfigRepository].
 class BackupConfig {
   final bool ativado;
-
-  /// Intervalo entre backups automáticos, em minutos. O WorkManager do
-  /// Android não garante execução exata nesse intervalo — trate como uma
-  /// preferência, não uma garantia (ver comentários em BackupScheduler).
   final int intervaloMinutos;
-
   final DateTime? ultimoBackupEm;
-
-  /// E-mail da conta Google conectada, ou `null` se nenhuma estiver
-  /// conectada (ex.: backup desativado, ou sessão expirada).
+  final DateTime? ultimaTentativaEm;
+  final String? ultimoErro; // Diagnóstico
   final String? contaEmail;
 
   const BackupConfig({
     this.ativado = false,
-    this.intervaloMinutos = 24 * 60, // padrão: 1x por dia
+    this.intervaloMinutos = 24 * 60,
     this.ultimoBackupEm,
+    this.ultimaTentativaEm,
+    this.ultimoErro,
     this.contaEmail,
   });
 
@@ -32,6 +25,8 @@ class BackupConfig {
     bool? ativado,
     int? intervaloMinutos,
     Object? ultimoBackupEm = _unset,
+    Object? ultimaTentativaEm = _unset,
+    Object? ultimoErro = _unset,
     Object? contaEmail = _unset,
   }) {
     return BackupConfig(
@@ -40,6 +35,10 @@ class BackupConfig {
       ultimoBackupEm: ultimoBackupEm == _unset
           ? this.ultimoBackupEm
           : ultimoBackupEm as DateTime?,
+      ultimaTentativaEm: ultimaTentativaEm == _unset
+          ? this.ultimaTentativaEm
+          : ultimaTentativaEm as DateTime?,
+      ultimoErro: ultimoErro == _unset ? this.ultimoErro : ultimoErro as String?,
       contaEmail: contaEmail == _unset ? this.contaEmail : contaEmail as String?,
     );
   }

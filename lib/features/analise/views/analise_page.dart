@@ -57,7 +57,7 @@ class AnalisePage extends StatelessWidget {
   }
 }
 
-// ─── Top bar ──────────────────────────────────────────────────────────────
+// Top bar
 
 class _AnaliseTopBar extends StatelessWidget {
   const _AnaliseTopBar();
@@ -68,8 +68,6 @@ class _AnaliseTopBar extends StatelessWidget {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       child: Stack(alignment: Alignment.center, children: [
-        // Mesmo padrão de centralização usado em Estoque e Vendas: o título
-        // fica travado no centro da tela, não no centro do espaço sobrando.
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 96),
           child: Text('Análise',
@@ -94,9 +92,6 @@ class _AnaliseTopBar extends StatelessWidget {
                 color: colors.onPrimary, size: 20),
           ),
           const Spacer(),
-          // Espaço reservado do mesmo tamanho de um IconButton real (48x48),
-          // para a Row ter exatamente a mesma altura de referência que
-          // Estoque e Vendas têm por causa dos ícones do lado direito.
           IgnorePointer(
             child: Opacity(
               opacity: 0,
@@ -112,7 +107,7 @@ class _AnaliseTopBar extends StatelessWidget {
   }
 }
 
-// ─── Seletor de período ───────────────────────────────────────────────────
+// Seletor de período
 
 class _PeriodoSelector extends StatelessWidget {
   final AnaliseViewModel vm;
@@ -148,7 +143,7 @@ class _PeriodoSelector extends StatelessWidget {
   );
 }
 
-// ─── Cards de resumo ─────────────────────────────────────────────────────
+// Cards de resumo
 
 class _ResumoCards extends StatelessWidget {
   final ResumoSaidas resumo;
@@ -254,10 +249,10 @@ class _MetricCard extends StatelessWidget {
   }
 }
 
-// ─── Gráfico "para onde o estoque está indo" ────────────────────────────
+// Gráfico "para onde o estoque está indo"
 
 class _MotivoChart extends StatelessWidget {
-  final Map<String, int> dados;
+  final Map<String, double> dados;
   const _MotivoChart({required this.dados});
 
   String _labelPara(String chave) {
@@ -302,7 +297,7 @@ class _MotivoChart extends StatelessWidget {
 
 class _MotivoBar extends StatelessWidget {
   final String label;
-  final int valor;
+  final double valor;
   final double proporcao;
   const _MotivoBar({
     required this.label,
@@ -334,7 +329,7 @@ class _MotivoBar extends StatelessWidget {
       ]);
 }
 
-// ─── Seção Atenção ────────────────────────────────────────────────────────
+// Seção Atenção
 
 class _AtencaoSection extends StatelessWidget {
   final List<LoteComProduto> lotes;
@@ -393,7 +388,7 @@ class _AtencaoSection extends StatelessWidget {
   );
 }
 
-// ─── Erro ─────────────────────────────────────────────────────────────────
+// Erro
 
 class _ErrorBanner extends StatelessWidget {
   final String mensagem;

@@ -16,7 +16,7 @@ class EstoqueInsuficienteException implements Exception {
       'Estoque insuficiente para "$produtoNome": disponível ${disponivel.formatada}, solicitado ${solicitado.formatada}';
 }
 
-/// Quanto de um lote específico foi vendido numa semana específica — usado
+/// Quanto de um lote específico foi vendido numa semana específica - usado
 /// para detalhar uma barra do gráfico de histórico em ProdutoAnalisePage.
 class VendaLoteSemana {
   final int loteId;
@@ -28,6 +28,58 @@ class VendaLoteSemana {
     required this.numeroLote,
     required this.quantidade,
   });
+}
+
+/// Um item de venda já com o nome do produto e o lucro calculado - para a
+/// tela de registro/histórico de vendas.
+class VendaItemDetalhado {
+  final int produtoId;
+  final String produtoNome;
+  final int loteId;
+  final double quantidade;
+  final double precoUnitario;
+  final double subtotal;
+  final double precoCustoAtual;
+
+  const VendaItemDetalhado({
+    required this.produtoId,
+    required this.produtoNome,
+    required this.loteId,
+    required this.quantidade,
+    required this.precoUnitario,
+    required this.subtotal,
+    required this.precoCustoAtual,
+  });
+
+  double get lucro => subtotal - (quantidade * precoCustoAtual);
+
+  String get precoUnitarioFormatado =>
+      'R\$ ${precoUnitario.toStringAsFixed(2).replaceAll('.', ',')}';
+
+  String get subtotalFormatado =>
+      'R\$ ${subtotal.toStringAsFixed(2).replaceAll('.', ',')}';
+
+  String get lucroFormatado {
+    final sinal = lucro < 0 ? '-' : '';
+    return '$sinal R\$ ${lucro.abs().toStringAsFixed(2).replaceAll('.', ',')}';
+  }
+}
+
+/// Uma venda com seus itens detalhados - base da tela de registro de
+/// vendas (código da venda, produtos, lucro por produto, lucro total e
+/// faturamento).
+class VendaDetalhada {
+  final Venda venda;
+  final List<VendaItemDetalhado> itens;
+
+  const VendaDetalhada({required this.venda, required this.itens});
+
+  double get lucroTotal => itens.fold(0, (acc, i) => acc + i.lucro);
+
+  String get lucroTotalFormatado {
+    final sinal = lucroTotal < 0 ? '-' : '';
+    return '$sinal R\$ ${lucroTotal.abs().toStringAsFixed(2).replaceAll('.', ',')}';
+  }
 }
 
 class VendaRepository {
@@ -67,9 +119,6 @@ class VendaRepository {
           'lotes_produto',
           {
             'quantidade': novaQuantidade,
-            // Epsilon em vez de "== 0" puro: evita que resíduos de ponto
-            // flutuante (ex.: 0.0000000001) deixem o lote com estoque
-            // zerado mas status ainda ATIVO.
             'status': novaQuantidade <= 0.0009 ? 'ESGOTADO' : loteRows.first['status'],
           },
           where: 'id = ?',
@@ -130,16 +179,6 @@ class VendaRepository {
   /// Quantidade vendida por semana do produto [produtoId], das últimas
   /// [semanas] semanas corridas (índice 0 = semana mais recente),
   /// zero-preenchida para semanas sem venda.
-  ///
-  /// Usado como base para o cálculo da média de saída em
-  /// PrevisaoEstoqueService — deliberadamente lê só de venda_itens (não de
-  /// movimentacoes_estoque em geral), já que ajustes e perdas não
-  /// representam demanda real de venda.
-  ///
-  /// Retorna [double] (não [int]) desde a introdução de vendas fracionadas
-  /// (kg/g/L/mL) — se você tiver um `PrevisaoEstoqueService` ou similar que
-  /// consome este método fora dos arquivos revisados aqui, atualize a
-  /// assinatura dele também.
   Future<List<double>> getVendasPorSemana(int produtoId, {int semanas = 12}) async {
     final db = await _db.database;
     final desde = DateTime.now().subtract(Duration(days: semanas * 7));
@@ -166,9 +205,6 @@ class VendaRepository {
   /// Quanto de cada lote foi vendido numa semana específica de
   /// [produtoId]. [semanasAtras] usa a MESMA convenção de
   /// [getVendasPorSemana]: 0 = semana atual, 1 = semana passada, etc.
-  /// Usado ao expandir uma barra do gráfico de histórico em
-  /// ProdutoAnalisePage — o total aqui bate com `getVendasPorSemana(...)
-  /// [semanasAtras]`, só que aberto por lote em vez de somado.
   Future<List<VendaLoteSemana>> getVendasPorLoteNaSemana(
       int produtoId, {
         required int semanasAtras,
@@ -198,7 +234,7 @@ class VendaRepository {
         .toList();
   }
 
-  /// Quantidade total vendida e faturamento no intervalo [desde, ate).
+  /// Quantidade total vendida e faturamento no intervalo [desde, ate].
   /// Usado para montar os cards "Vendidas"/"Faturamento" e sua comparação
   /// com o período anterior de mesma duração.
   Future<Map<String, num>> getResumoPeriodo(DateTime desde, DateTime ate) async {
@@ -216,5 +252,56 @@ class VendaRepository {
       'qtd': (res.first['qtd'] as num).toDouble(),
       'faturamento': (res.first['faturamento'] as num).toDouble(),
     };
+  }
+
+  /// Todas as vendas com seus itens detalhados (nome do produto + lucro
+  /// por item) — base da tela de registro de vendas.
+  Future<List<VendaDetalhada>> getHistoricoDetalhado() async {
+    final db = await _db.database;
+
+    final vendasRows = await db.query('vendas', orderBy: 'criado_em DESC');
+    if (vendasRows.isEmpty) return [];
+
+    final vendaIds = vendasRows.map((r) => r['id'] as int).toList();
+    final placeholders = List.filled(vendaIds.length, '?').join(',');
+
+    final itensRows = await db.rawQuery('''
+      SELECT
+        vi.venda_id,
+        vi.produto_id,
+        vi.lote_id,
+        vi.quantidade,
+        vi.preco_unitario,
+        vi.subtotal,
+        COALESCE(p.nome, 'Produto removido') AS produto_nome,
+        COALESCE(lp.preco_custo, 0) AS preco_custo_atual
+      FROM venda_itens vi
+      LEFT JOIN produtos p ON p.id = vi.produto_id
+      LEFT JOIN lotes_produto lp ON lp.id = vi.lote_id
+      WHERE vi.venda_id IN ($placeholders)
+      ORDER BY vi.id ASC
+    ''', vendaIds);
+
+    final itensPorVenda = <int, List<VendaItemDetalhado>>{};
+    for (final r in itensRows) {
+      final item = VendaItemDetalhado(
+        produtoId: r['produto_id'] as int,
+        produtoNome: r['produto_nome'] as String,
+        loteId: r['lote_id'] as int,
+        quantidade: (r['quantidade'] as num).toDouble(),
+        precoUnitario: (r['preco_unitario'] as num).toDouble(),
+        subtotal: (r['subtotal'] as num).toDouble(),
+        precoCustoAtual: (r['preco_custo_atual'] as num).toDouble(),
+      );
+      itensPorVenda.putIfAbsent(r['venda_id'] as int, () => []).add(item);
+    }
+
+    return vendasRows.map((r) {
+      final venda = Venda.fromMap(r);
+      return VendaDetalhada(
+        venda: venda,
+        itens: itensPorVenda[venda.id] ?? [],
+      );
+    }).toList();
   }
 }

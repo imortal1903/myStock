@@ -5,8 +5,7 @@ class ItemCarrinho {
   final Produto produto;
   final Lote lote;
 
-  /// Quantidade no carrinho — pode ser fracionária quando
-  /// `produto.permiteFracao` for true (kg, g, L, mL).
+  /// Quantidade no carrinho
   double quantidade;
   double precoUnitario;
 

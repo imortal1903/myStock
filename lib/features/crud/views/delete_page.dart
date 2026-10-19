@@ -165,8 +165,7 @@ class _DeleteView extends StatelessWidget {
   }
 }
 
-// ── Lista de produtos ──
-
+// Lista de produtos
 class _ProductList extends StatelessWidget {
   final DeleteViewModel vm;
   const _ProductList({required this.vm});
@@ -287,8 +286,7 @@ class _ProductTile extends StatelessWidget {
   }
 }
 
-// ── Lotes do produto ──
-
+// Lotes do produto
 class _LotesList extends StatelessWidget {
   final DeleteViewModel vm;
   const _LotesList({required this.vm});
@@ -300,10 +298,16 @@ class _LotesList extends StatelessWidget {
       ctx,
       title: 'Remover lote',
       confirmLabel: 'Remover',
-      content: Text('Remover "$label" permanentemente?',
-          style: TextStyle(color: ctx.colors.textSecondary, fontSize: 14)),
+      content: Text(
+        'Remover "$label"? Ele deixa de aparecer no estoque, mas o '
+            'histórico de vendas e movimentações desse lote é preservado.',
+        style: TextStyle(color: ctx.colors.textSecondary, fontSize: 14),
+      ),
     );
-    if (ok && ctx.mounted) await vm.deleteLote(l.id!);
+    // Exclusão lógica por padrão: um hard delete (vm.deleteLote) falharia
+    // aqui se o lote já tiver alguma venda registrada (FK de
+    // venda_itens.lote_id, que não tem ON DELETE CASCADE).
+    if (ok && ctx.mounted) await vm.desativarLote(l.id!);
   }
 
   @override

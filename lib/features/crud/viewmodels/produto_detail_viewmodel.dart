@@ -22,7 +22,7 @@ class ProdutoDetailViewModel extends BaseViewModel {
   Produto get produto => _item.produto;
 
   /// Recarrega produto e lotes. Retorna `false` se o produto não existe mais
-  /// (ou foi desativado) — a página deve então se fechar.
+  /// (ou foi desativado).
   Future<bool> refresh() async {
     try {
       final produto = await _produtoRepo.getById(_item.produto.id!);
@@ -34,7 +34,7 @@ class ProdutoDetailViewModel extends BaseViewModel {
       return true;
     } catch (e) {
       setStatus(ViewStatus.error, error: 'Erro ao atualizar: $e');
-      return true; // erro de leitura não deve fechar a tela
+      return true;
     }
   }
 }

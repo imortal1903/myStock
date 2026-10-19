@@ -101,7 +101,7 @@ class _ProdutoAnaliseView extends StatelessWidget {
   }
 }
 
-// ─── Giro de estoque ────────────────────────────────────────────────────
+// Giro de estoque
 
 class _GiroCard extends StatelessWidget {
   final PrevisaoEstoque previsao;
@@ -182,7 +182,7 @@ class _GiroBlock extends StatelessWidget {
   );
 }
 
-// ─── Histórico semanal ──────────────────────────────────────────────────
+// Histórico semanal
 
 class _HistoricoChart extends StatefulWidget {
   /// Índice 0 = semana mais recente.
@@ -196,9 +196,7 @@ class _HistoricoChart extends StatefulWidget {
 
 class _HistoricoChartState extends State<_HistoricoChart> {
   /// "semanasAtras" da barra atualmente expandida (0 = semana atual), ou
-  /// `null` se nenhuma estiver selecionada. Note que isso é o índice na
-  /// convenção original (`widget.semanas`), não na lista invertida usada
-  /// só para desenhar o gráfico da esquerda pra direita.
+  /// `null` se nenhuma estiver selecionada.
   int? _semanaSelecionada;
 
   String _labelSemana(int semanasAtras) {
@@ -373,8 +371,6 @@ class _DetalheSemana extends StatelessWidget {
   }
 }
 
-// ─── Risco de vencimento ──────────────────────────────────────────────
-
 class _RiscoSection extends StatelessWidget {
   final List<LoteEmRisco> lotes;
   final String unidade;
@@ -400,9 +396,7 @@ class _RiscoSection extends StatelessWidget {
       ]),
       const SizedBox(height: 4),
       Text(
-        'Estimativa considerando a ordem de validade dos lotes — cenário '
-            'conservador, não leva em conta a prioridade configurada na tela '
-            'de Vendas.',
+        'Estimativa considerando a ordem de validade dos lotes.',
         style: TextStyle(color: context.colors.textFaint, fontSize: 11.5, height: 1.4),
       ),
       const SizedBox(height: 12),
@@ -424,7 +418,7 @@ class _RiscoSection extends StatelessWidget {
   );
 }
 
-// ─── Erro ─────────────────────────────────────────────────────────────
+// Erro
 
 class _ErrorBanner extends StatelessWidget {
   final String mensagem;

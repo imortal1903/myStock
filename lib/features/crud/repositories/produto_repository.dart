@@ -17,8 +17,7 @@ class ProdutoRepository {
   final Db _db;
   ProdutoRepository({Db? db}) : _db = db ?? Db.instance;
 
-  // ── Verificação de duplicidade ───────────────────────────────────────────────
-
+  // Verificação de duplicidade
   Future<bool> existsCodigoBarras(String codigoBarras, {int? excludeId}) async {
     final db = await _db.database;
     final where = excludeId != null ? 'codigo_barras = ? AND id != ?' : 'codigo_barras = ?';
@@ -27,8 +26,6 @@ class ProdutoRepository {
     final rows = await db.query('produtos', where: where, whereArgs: args, limit: 1);
     return rows.isNotEmpty;
   }
-
-  // ── INSERT ─────────────────────────────────────────────────────────────────
 
   Future<int> insert(Produto p) async {
     final codigo = p.codigoBarras?.trim();
@@ -43,8 +40,6 @@ class ProdutoRepository {
         conflictAlgorithm: ConflictAlgorithm.abort);
   }
 
-  // ── UPDATE ─────────────────────────────────────────────────────────────────
-
   Future<int> update(Produto p) async {
     final codigo = p.codigoBarras?.trim();
     if (codigo != null && codigo.isNotEmpty) {
@@ -58,22 +53,16 @@ class ProdutoRepository {
         where: 'id = ?', whereArgs: [p.id]);
   }
 
-  // ── DELETE (soft) ──────────────────────────────────────────────────────────
-
   Future<int> deactivate(int id) async {
     final db = await _db.database;
     return db.update('produtos', {'ativo': 0},
         where: 'id = ?', whereArgs: [id]);
   }
 
-  // ── DELETE (hard) ──────────────────────────────────────────────────────────
-
   Future<int> delete(int id) async {
     final db = await _db.database;
     return db.delete('produtos', where: 'id = ?', whereArgs: [id]);
   }
-
-  // ── SEARCH ─────────────────────────────────────────────────────────────────
 
   Future<List<Produto>> search(
       String query, {
@@ -115,8 +104,6 @@ class ProdutoRepository {
 
     return rows.map(Produto.fromMap).toList();
   }
-
-  // ── GET BY ID ──────────────────────────────────────────────────────────────
 
   Future<Produto?> getById(int id) async {
     final db   = await _db.database;

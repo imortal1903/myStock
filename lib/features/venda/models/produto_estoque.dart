@@ -14,7 +14,7 @@ class ProdutoEstoque {
 
   bool get disponivelParaVenda => quantidadeDisponivel > 0;
 
-  /// Sem estoque ativo, mas existe lote vencido — prioriza esse aviso.
+  /// Sem estoque ativo, mas existe lote vencido - prioriza esse aviso.
   bool get vencido =>
       quantidadeDisponivel == 0 && lotes.any((l) => l.status == LoteStatus.vencido);
 

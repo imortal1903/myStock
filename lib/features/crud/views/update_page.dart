@@ -12,10 +12,6 @@ import '../../../core/viewmodels/base_viewmodel.dart';
 
 class UpdatePage extends StatelessWidget {
   final Produto? produto;
-
-  /// Se informado (junto com [produto]), a tela abre já no formulário de
-  /// edição deste lote — pulando a lista de produtos e a aba "Dados".
-  /// Usado ao tocar num lote a partir de ProdutoDetailPage.
   final Lote? loteInicial;
 
   const UpdatePage({super.key, this.produto, this.loteInicial});
@@ -47,7 +43,7 @@ class _UpdateView extends StatelessWidget {
     final vm = context.read<UpdateViewModel>();
     if (vm.selectedLote != null) {
       if (vm.abriuComLoteEspecifico) {
-        // Aberto direto de um lote (via ProdutoDetailPage) — "voltar"
+        // Aberto direto de um lote (via ProdutoDetailPage) - "voltar"
         // aqui significa sair da tela inteira, não cair na visão normal
         // (abas "Dados"/"Lotes") do UpdatePage.
         Navigator.pop(context);
@@ -71,9 +67,7 @@ class _UpdateView extends StatelessWidget {
         final vmAtual = context.read<UpdateViewModel>();
         // O caso "salvou um lote aberto direto de ProdutoDetailPage" já é
         // tratado em _LoteFormState._salvar() (que decide na hora, sem
-        // esperar um rebuild) e reseta o status antes de chegar aqui. O
-        // que sobra pra tratar aqui é sempre o caso "genérico": salvar
-        // dados do produto, ou salvar um lote fora do fluxo direto.
+        // esperar um rebuild) e reseta o status antes de chegar aqui.
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(
           content: const Text('Salvo com sucesso!'),
           backgroundColor: context.colors.primary,
@@ -111,7 +105,7 @@ class _UpdateView extends StatelessWidget {
   }
 }
 
-// ── Etapa 1: lista de produtos ──
+// Lista de produtos
 class _ProductList extends StatelessWidget {
   final UpdateViewModel vm;
   const _ProductList({required this.vm});
@@ -231,7 +225,7 @@ class _ProductTile extends StatelessWidget {
   }
 }
 
-// ── Etapa 2: dados do produto + lotes ──
+// Dados do produto + lotes
 class _ProdutoDetail extends StatefulWidget {
   final UpdateViewModel vm;
   const _ProdutoDetail({super.key, required this.vm});
@@ -434,7 +428,7 @@ class _ProdutoDetailState extends State<_ProdutoDetail>
   }
 }
 
-// ── Etapa 3: formulário do lote ──
+// Formulário do lote
 class _LoteForm extends StatefulWidget {
   final UpdateViewModel vm;
   const _LoteForm({super.key, required this.vm});
@@ -481,13 +475,9 @@ class _LoteFormState extends State<_LoteForm> {
     isValidade ? vm.setDataValidade(picked) : vm.setDataFabricacao(picked);
   }
 
-  /// Aguarda o saveLote() terminar e decide *aqui mesmo*, de forma direta
+  /// Aguarda o saveLote() terminar e decide aqui mesmo, de forma direta
   /// e síncrona com o resultado, se deve fechar a tela e voltar para
-  /// ProdutoDetailPage. Fazer essa checagem no `build()` (reagindo a
-  /// `vm.status`) depende de quando o próximo rebuild acontece — o widget
-  /// pode já não estar mais mostrando este formulário, ou a checagem pode
-  /// nunca "pegar" o estado no momento certo. Aqui não há corrida: o
-  /// `await` garante que já sabemos o resultado.
+  /// ProdutoDetailPage.
   Future<void> _salvar(BuildContext context, UpdateViewModel vm) async {
     await vm.saveLote();
     if (!context.mounted) return;
@@ -501,10 +491,6 @@ class _LoteFormState extends State<_LoteForm> {
       vm.limparUltimoSaveFoiDeLote();
       Navigator.of(context).pop();
     }
-    // Nos demais casos (erro, ou save sem `abriuComLoteEspecifico`) não
-    // faz nada aqui — o tratamento genérico em `_UpdateView.build()`
-    // continua responsável pelo snackbar de sucesso e pela mensagem de
-    // erro, exatamente como antes.
   }
 
   @override
@@ -642,7 +628,7 @@ class _LoteFormState extends State<_LoteForm> {
   }
 }
 
-// ── Widgets locais ──
+// Widgets locais
 class _PrimaryButton extends StatelessWidget {
   final String label;
   final bool isLoading;

@@ -7,6 +7,9 @@ import 'widgets/lote_tile.dart';
 import 'update_page.dart';
 import 'delete_page.dart';
 import '../models/lote.dart';
+import '../models/produto.dart';
+import '../models/movimentacao_estoque.dart';
+import '../repositories/lote_repository.dart';
 import '../../analise/views/produto_analise_page.dart';
 import '../../../core/extensions/quantidade_extensions.dart';
 import '../../../core/theme/color_palette.dart';
@@ -125,7 +128,14 @@ class _ProdutoDetailView extends StatelessWidget {
                   padding: const EdgeInsets.only(bottom: 10),
                   child: LoteTile(
                     lote: l,
-                    trailing: _StatusBadge(lote: l),
+                    trailing: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        _StatusBadge(lote: l),
+                        const SizedBox(width: 6),
+                        _RegistrarPerdaButton(produto: produto, lote: l),
+                      ],
+                    ),
                     onTap: () => _openAndRefresh(
                       context,
                           () => UpdatePage(produto: produto, loteInicial: l),
@@ -142,7 +152,7 @@ class _ProdutoDetailView extends StatelessWidget {
 }
 
 class _StatusBadge extends StatelessWidget {
-  final Lote lote; // tipado! `dynamic` quebra as extensions do enum
+  final Lote lote;
   const _StatusBadge({required this.lote});
 
   @override
@@ -165,6 +175,245 @@ class _StatusBadge extends StatelessWidget {
         overflow: TextOverflow.ellipsis,
         style: TextStyle(color: cor, fontSize: 11, fontWeight: FontWeight.w600),
       ),
+    );
+  }
+}
+
+/// Botão compacto ao lado do badge de status do lote, que abre o
+/// formulário de registro de perda (avaria, roubo, etc).
+class _RegistrarPerdaButton extends StatelessWidget {
+  final Produto produto;
+  final Lote lote;
+  const _RegistrarPerdaButton({required this.produto, required this.lote});
+
+  Future<void> _abrir(BuildContext context) async {
+    final registrou = await showModalBottomSheet<bool>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: context.colors.surface,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      builder: (_) => _FormularioPerda(produto: produto, lote: lote),
+    );
+
+    if (registrou == true && context.mounted) {
+      await context.read<ProdutoDetailViewModel>().refresh();
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Perda registrada.')),
+        );
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) => GestureDetector(
+    onTap: () => _abrir(context),
+    behavior: HitTestBehavior.opaque,
+    child: Container(
+      padding: const EdgeInsets.all(6),
+      decoration: BoxDecoration(
+        color: context.colors.danger.withValues(alpha: 0.12),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Icon(Icons.remove_shopping_cart_outlined,
+          color: context.colors.danger, size: 16),
+    ),
+  );
+}
+
+/// Formulário de registro de perda: quantidade + motivo + observação
+/// opcional.
+class _FormularioPerda extends StatefulWidget {
+  final Produto produto;
+  final Lote lote;
+  const _FormularioPerda({required this.produto, required this.lote});
+
+  @override
+  State<_FormularioPerda> createState() => _FormularioPerdaState();
+}
+
+class _FormularioPerdaState extends State<_FormularioPerda> {
+  late final TextEditingController _qtdCtrl;
+  final _obsCtrl = TextEditingController();
+  MotivoMovimentacao _motivo = MotivoMovimentacao.avaria;
+  bool _salvando = false;
+  String? _erro;
+
+  static const _motivosDisponiveis = [
+    MotivoMovimentacao.avaria,
+    MotivoMovimentacao.roubo,
+    MotivoMovimentacao.outro,
+  ];
+
+  @override
+  void initState() {
+    super.initState();
+    final atual = widget.lote.quantidade;
+    final texto = widget.produto.permiteFracao
+        ? atual.toString()
+        : atual.toStringAsFixed(0);
+    _qtdCtrl = TextEditingController(text: texto);
+  }
+
+  @override
+  void dispose() {
+    _qtdCtrl.dispose();
+    _obsCtrl.dispose();
+    super.dispose();
+  }
+
+  Future<void> _confirmar() async {
+    final texto = _qtdCtrl.text.trim().replaceAll(',', '.');
+    final quantidade = double.tryParse(texto);
+
+    if (quantidade == null || quantidade <= 0) {
+      setState(() => _erro = 'Informe uma quantidade válida.');
+      return;
+    }
+    if (quantidade > widget.lote.quantidade) {
+      setState(() => _erro =
+      'O lote só tem ${widget.lote.quantidade.formatada} '
+          '${widget.produto.unidade} em estoque.');
+      return;
+    }
+
+    setState(() {
+      _salvando = true;
+      _erro = null;
+    });
+
+    try {
+      await LoteRepository().registrarPerda(
+        loteId: widget.lote.id!,
+        quantidade: quantidade,
+        motivo: _motivo,
+        observacao: _obsCtrl.text.trim().isEmpty ? null : _obsCtrl.text.trim(),
+      );
+      if (mounted) Navigator.pop(context, true);
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _salvando = false;
+          _erro = 'Não foi possível registrar a perda: $e';
+        });
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.colors;
+    final loteLabel = widget.lote.numeroLote ?? '#${widget.lote.id}';
+
+    return Padding(
+      padding: EdgeInsets.fromLTRB(
+        20, 20, 20, 20 + MediaQuery.of(context).viewInsets.bottom,
+      ),
+      child: Column(mainAxisSize: MainAxisSize.min, children: [
+        Row(children: [
+          Icon(Icons.remove_shopping_cart_outlined, color: colors.danger),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text('Registrar perda - Lote $loteLabel',
+                style: TextStyle(
+                  color: colors.textPrimary,
+                  fontSize: 16,
+                  fontWeight: FontWeight.w600,
+                )),
+          ),
+        ]),
+        const SizedBox(height: 16),
+        TextField(
+          controller: _qtdCtrl,
+          keyboardType: TextInputType.numberWithOptions(
+              decimal: widget.produto.permiteFracao),
+          style: TextStyle(color: colors.textPrimary),
+          decoration: InputDecoration(
+            labelText: 'Quantidade perdida (${widget.produto.unidade})',
+            labelStyle: TextStyle(color: colors.textFaint),
+            enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(10),
+              borderSide: BorderSide(color: colors.divider),
+            ),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(10),
+              borderSide: BorderSide(color: colors.accent),
+            ),
+          ),
+        ),
+        const SizedBox(height: 14),
+        DropdownButtonFormField<MotivoMovimentacao>(
+          initialValue: _motivo,
+          decoration: InputDecoration(
+            labelText: 'Motivo',
+            labelStyle: TextStyle(color: colors.textFaint),
+            enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(10),
+              borderSide: BorderSide(color: colors.divider),
+            ),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(10),
+              borderSide: BorderSide(color: colors.accent),
+            ),
+          ),
+          dropdownColor: colors.surface,
+          style: TextStyle(color: colors.textPrimary),
+          items: _motivosDisponiveis
+              .map((m) => DropdownMenuItem(value: m, child: Text(m.label)))
+              .toList(),
+          onChanged: (m) {
+            if (m != null) setState(() => _motivo = m);
+          },
+        ),
+        const SizedBox(height: 14),
+        TextField(
+          controller: _obsCtrl,
+          style: TextStyle(color: colors.textPrimary),
+          maxLines: 2,
+          decoration: InputDecoration(
+            labelText: 'Observação (opcional)',
+            labelStyle: TextStyle(color: colors.textFaint),
+            enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(10),
+              borderSide: BorderSide(color: colors.divider),
+            ),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(10),
+              borderSide: BorderSide(color: colors.accent),
+            ),
+          ),
+        ),
+        if (_erro != null) ...[
+          const SizedBox(height: 10),
+          Text(_erro!,
+              style: const TextStyle(color: Colors.redAccent, fontSize: 12.5)),
+        ],
+        const SizedBox(height: 20),
+        Row(children: [
+          Expanded(
+            child: OutlinedButton(
+              onPressed: _salvando ? null : () => Navigator.pop(context, false),
+              child: const Text('Cancelar'),
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: FilledButton(
+              onPressed: _salvando ? null : _confirmar,
+              style: FilledButton.styleFrom(backgroundColor: colors.danger),
+              child: _salvando
+                  ? const SizedBox(
+                  width: 18,
+                  height: 18,
+                  child: CircularProgressIndicator(
+                      strokeWidth: 2, color: Colors.white))
+                  : const Text('Registrar perda'),
+            ),
+          ),
+        ]),
+      ]),
     );
   }
 }

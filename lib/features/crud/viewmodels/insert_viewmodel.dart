@@ -27,11 +27,11 @@ class InsertViewModel extends BaseViewModel {
     _loadCategorias();
   }
 
-  // ── Form keys ──
+  //  keys
   final produtoFormKey = GlobalKey<FormState>();
   final loteFormKey = GlobalKey<FormState>();
 
-  // ── Produto ──
+  // Produto
   String nome = '';
   String descricao = '';
   String codigoBarras = '';
@@ -39,7 +39,7 @@ class InsertViewModel extends BaseViewModel {
   String unidade = 'un';
   int? categoriaId;
 
-  // ── Lote ──
+  // Lote
   String numeroLote = '';
   String quantidadeText = '';
   String precoCustoText = '';
@@ -58,11 +58,10 @@ class InsertViewModel extends BaseViewModel {
       _categorias = await _catRepo.getAll();
       safeNotify();
     } catch (_) {
-      // categorias são opcionais: falha silenciosa é aceitável aqui
     }
   }
 
-  // ── Setters produto ──
+  // Setters produto
   void setUnidade(String u) {
     unidade = u;
     safeNotify();
@@ -78,7 +77,7 @@ class InsertViewModel extends BaseViewModel {
     safeNotify();
   }
 
-  // ── Setters lote (mantêm temDadosLote sempre atualizado) ──
+  // Setters lote (mantêm temDadosLote sempre atualizado)
   void setNumeroLote(String v) => _updateLoteField(() => numeroLote = v);
   void setQuantidade(String v) => _updateLoteField(() => quantidadeText = v);
   void setPrecoCusto(String v) => _updateLoteField(() => precoCustoText = v);
@@ -93,12 +92,12 @@ class InsertViewModel extends BaseViewModel {
     safeNotify();
   }
 
+  bool _tentouSalvarLote = false;
+
   void _updateLoteField(VoidCallback apply) {
     final antes = temDadosLote;
     apply();
-    // Revalida o form do lote quando o "modo lote" liga/desliga,
-    // para limpar/exibir os erros condicionais.
-    if (antes != temDadosLote) {
+    if (_tentouSalvarLote || (antes && !temDadosLote)) {
       loteFormKey.currentState?.validate();
     }
     safeNotify();
@@ -112,7 +111,7 @@ class InsertViewModel extends BaseViewModel {
           dataValidade != null ||
           dataFabricacao != null;
 
-  // ── Validators ──
+  // Validators
   String? validateNome(String? v) => ProdutoValidators.nome(v);
 
   String? validateCodigoBarras(String? v) =>
@@ -133,7 +132,7 @@ class InsertViewModel extends BaseViewModel {
       label: 'preço de venda', maiorQueZero: true)
       : null;
 
-  // ── Save ──
+  // Save
   Future<bool> save() async {
     final codigo = codigoBarras.trim();
     _codigoBarrasDuplicado = null;
@@ -144,6 +143,7 @@ class InsertViewModel extends BaseViewModel {
     if (!(produtoFormKey.currentState?.validate() ?? false)) return false;
 
     if (temDadosLote) {
+      _tentouSalvarLote = true;
       if (!(loteFormKey.currentState?.validate() ?? false)) return false;
       if (dataValidade == null) {
         setStatus(ViewStatus.error,
@@ -176,9 +176,6 @@ class InsertViewModel extends BaseViewModel {
               ? LoteStatus.vencido
               : (quantidade <= 0 ? LoteStatus.esgotado : LoteStatus.ativo);
 
-          // Lote.novo() em vez de Lote() direto: preenche
-          // quantidadeInicial automaticamente a partir de `quantidade`,
-          // já que este é sempre um lote recém-criado aqui.
           await _loteRepo.insert(
             Lote.novo(
               produtoId: produtoId,
@@ -226,6 +223,7 @@ class InsertViewModel extends BaseViewModel {
     dataValidade = null;
     dataEntrada = DateTime.now();
     _codigoBarrasDuplicado = null;
+    _tentouSalvarLote = false;
     produtoFormKey.currentState?.reset();
     loteFormKey.currentState?.reset();
     setStatus(ViewStatus.idle);

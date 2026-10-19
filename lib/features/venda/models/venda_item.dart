@@ -3,9 +3,6 @@ class VendaItem {
   final int vendaId;
   final int produtoId;
   final int loteId;
-
-  /// Quantidade vendida — pode ser fracionária para produtos com
-  /// [Produto.permiteFracao] (kg, g, L, mL).
   final double quantidade;
   final double precoUnitario;
   final double subtotal;

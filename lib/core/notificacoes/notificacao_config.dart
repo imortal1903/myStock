@@ -25,8 +25,7 @@ class NotificacaoConfig {
     this.intervaloHoras = 24,
   });
 
-  // ── Serialização ───────────────────────────────────────────────────────────
-
+  // Serialização
   Map<String, dynamic> toMap() => {
     'ativado':        ativado,
     'diasAntes':      diasAntes,
@@ -64,8 +63,7 @@ class NotificacaoConfig {
         intervaloHoras: intervaloHoras ?? this.intervaloHoras,
       );
 
-  // ── Labels de UI ──────────────────────────────────────────────────────────
-
+  // Labels de UI
   String get intervaloLabel {
     switch (intervaloHoras) {
       case 24:  return 'Todo dia';
@@ -80,8 +78,7 @@ class NotificacaoConfig {
       '${hora.toString().padLeft(2, '0')}:'
           '${minuto.toString().padLeft(2, '0')}';
 
-  // ── Opções disponíveis ────────────────────────────────────────────────────
-
+  // Opções disponíveis
   static const List<int> opDiasAntes      = [1, 2, 3, 5, 7, 14, 30];
   static const List<int> opIntervaloHoras = [24, 48, 72, 168];
 }

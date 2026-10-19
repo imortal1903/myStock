@@ -1,4 +1,4 @@
-/// Tipo da movimentação de estoque — mesma semântica da constraint
+/// Tipo da movimentação de estoque - mesma semântica da constraint
 /// CHECK(tipo IN(...)) da tabela `movimentacoes_estoque`.
 enum TipoMovimentacao { entrada, saida, ajuste, perda }
 
@@ -32,11 +32,7 @@ extension TipoMovimentacaoExt on TipoMovimentacao {
   }
 }
 
-/// Motivo estruturado da movimentação. Opcional — nem toda movimentação
-/// precisa de um motivo (ex.: uma entrada simples pode só usar o `tipo`),
-/// mas sempre que o motivo for relevante para separar métricas no
-/// dashboard de Análise (ex.: "perdido por vencimento" x "perdido por
-/// avaria"), ele deve ser preenchido.
+/// Motivo estruturado da movimentação.
 enum MotivoMovimentacao {
   venda,
   vencimento,
@@ -95,9 +91,6 @@ class MovimentacaoEstoque {
   final int                loteId;
   final TipoMovimentacao   tipo;
   final MotivoMovimentacao? motivo;
-
-  /// Quantidade movimentada. Pode ser fracionária para produtos com
-  /// [Produto.permiteFracao] (kg, g, L, mL).
   final double              quantidade;
   final String?            observacao;
   final DateTime           criadoEm;

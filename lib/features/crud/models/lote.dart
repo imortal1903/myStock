@@ -36,16 +36,9 @@ class Lote {
   final String?    numeroLote;
 
   /// Quantidade em estoque. Para produtos com [Produto.permiteFracao]
-  /// (kg, g, L, mL) pode ser fracionária (ex.: 1.5); para os demais (un,
-  /// cx, pct) deve sempre valer um número inteiro — essa regra é aplicada
-  /// na camada de UI/ViewModel, não aqui no model.
   final double     quantidade;
 
-  /// Snapshot imutável da quantidade recebida na criação do lote. Nunca é
-  /// alterado depois — é o que permite calcular "vendido" (quantidadeInicial
-  /// - quantidade) sem depender só do log de movimentações. Use
-  /// [Lote.novo] ao criar um lote para garantir que este campo seja
-  /// preenchido corretamente.
+  /// Snapshot imutável da quantidade recebida na criação do lote.
   final double     quantidadeInicial;
 
   final double     precoCusto;
@@ -54,6 +47,9 @@ class Lote {
   final DateTime   dataValidade;
   final DateTime   dataEntrada;
   final LoteStatus status;
+
+  /// Exclusão lógica do lote (soft delete)
+  final bool       ativo;
   final DateTime   criadoEm;
 
   const Lote({
@@ -68,13 +64,12 @@ class Lote {
     required this.dataValidade,
     required this.dataEntrada,
     this.status   = LoteStatus.ativo,
+    this.ativo    = true,
     required this.criadoEm,
   });
 
   /// Cria um lote novo, preenchendo [quantidadeInicial] automaticamente a
-  /// partir de [quantidade]. Prefira este construtor em vez de `Lote(...)`
-  /// diretamente em qualquer fluxo de cadastro/entrada de lote — evita
-  /// esquecer de setar o snapshot inicial.
+  /// partir de [quantidade].
   factory Lote.novo({
     int?       id,
     required int produtoId,
@@ -102,8 +97,7 @@ class Lote {
     criadoEm:       criadoEm,
   );
 
-  // ── SQLite ─────────────────────────────────────────────────────────────────
-
+  // SQLite
   Map<String, dynamic> toMap() => {
     if (id != null) 'id': id,
     'produto_id':      produtoId,
@@ -116,6 +110,7 @@ class Lote {
     'data_validade': dataValidade.toSqlDate,
     'data_entrada': dataEntrada.toSqlDate,
     'status':          status.value,
+    'ativo':           ativo ? 1 : 0,
     'criado_em':       criadoEm.toIso8601String(),
   };
 
@@ -124,9 +119,6 @@ class Lote {
     produtoId:      m['produto_id'] as int,
     numeroLote:     m['numero_lote'] as String?,
     quantidade:     (m['quantidade'] as num).toDouble(),
-    // Defensivo: bancos migrados de uma versão anterior à v2 sempre têm a
-    // coluna preenchida pelo backfill da migration, mas por segurança caímos
-    // para `quantidade` caso o valor venha nulo por algum motivo.
     quantidadeInicial: (m['quantidade_inicial'] as num?)?.toDouble() ?? (m['quantidade'] as num).toDouble(),
     precoCusto:     (m['preco_custo'] as num).toDouble(),
     precoVenda:     (m['preco_venda'] as num).toDouble(),
@@ -136,11 +128,11 @@ class Lote {
     dataValidade:   DateTime.parse(m['data_validade'] as String),
     dataEntrada:    DateTime.parse(m['data_entrada'] as String),
     status:         LoteStatusExt.fromString(m['status'] as String? ?? 'ATIVO'),
+    ativo:          (m['ativo'] as int? ?? 1) == 1,
     criadoEm:       DateTime.parse(m['criado_em'] as String),
   );
 
-  // ── Helpers ────────────────────────────────────────────────────────────────
-
+  // Helpers
   bool get estaVencido =>
       dataValidade.isBeforeDate(DateTime.now());
 
@@ -173,8 +165,6 @@ class Lote {
   double? get margemPercentual =>
       precoCusto > 0 ? ((precoVenda - precoCusto) / precoCusto) * 100 : null;
 
-  /// Note: quantidadeInicial propositalmente não é editável aqui — é um
-  /// snapshot imutável do momento da criação do lote (veja Lote.novo()).
   Lote copyWith({
     int?       id,
     double?    quantidade,
@@ -185,6 +175,7 @@ class Lote {
     DateTime? dataEntrada,
     LoteStatus? status,
     String?    numeroLote,
+    bool?      ativo,
   }) =>
       Lote(
         id:             id             ?? this.id,
@@ -198,6 +189,7 @@ class Lote {
         dataValidade:   dataValidade   ?? this.dataValidade,
         dataEntrada:    dataEntrada ?? this.dataEntrada,
         status:         status         ?? this.status,
+        ativo:          ativo          ?? this.ativo,
         criadoEm:       criadoEm,
       );
 }

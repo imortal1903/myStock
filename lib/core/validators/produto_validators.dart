@@ -10,7 +10,6 @@ class ProdutoValidators {
     return null;
   }
 
-  /// Só valida duplicidade — o código de barras em si é opcional.
   static String? codigoBarras(String? v, {String? duplicado}) {
     final s = v?.trim() ?? '';
     if (s.isNotEmpty && duplicado != null && s == duplicado) {

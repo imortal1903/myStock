@@ -26,7 +26,6 @@ class _NotificacaoView extends StatelessWidget {
     final colors = context.colors;
     final vm = context.watch<NotificacaoViewModel>();
 
-    // Feedback único (sucesso ou erro) via SnackBar.
     final feedback = switch (vm.status) {
       ViewStatus.success => (
       'Configurações salvas e notificações agendadas!',
@@ -287,8 +286,7 @@ class _NotificacaoBody extends StatelessWidget {
   }
 }
 
-// ─── Widgets privados ───
-
+// Widgets privados
 class _Header extends StatelessWidget {
   const _Header();
 

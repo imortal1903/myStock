@@ -31,7 +31,7 @@ extension PeriodoAnaliseExt on PeriodoAnalise {
 }
 
 class ResumoSaidas {
-  final int quantidadeVendida;
+  final double quantidadeVendida;
   final double faturamento;
 
   /// null quando não há período anterior com dados suficientes para
@@ -39,7 +39,10 @@ class ResumoSaidas {
   final double? variacaoQuantidadePct;
   final double? variacaoFaturamentoPct;
 
-  final int quantidadeVencida;
+  final double quantidadeVencida;
+
+  /// Valor de custo total perdido no período, somando TODOS os motivos de
+  /// perda
   final double valorPerdido;
 
   const ResumoSaidas({
@@ -61,9 +64,7 @@ class AnaliseViewModel extends BaseViewModel {
   /// seção Atenção.
   static const int _diasAtencaoVencimento = 15;
 
-  /// Recarrega os dados periodicamente enquanto a tela está aberta, para
-  /// que lotes que vencem (ou saem do estoque por outro motivo) apareçam
-  /// atualizados sem precisar reabrir o app.
+  /// Recarrega os dados periodicamente enquanto a tela está aberta
   static const Duration _intervaloAutoRefresh = Duration(minutes: 1);
   Timer? _autoRefreshTimer;
 
@@ -85,9 +86,7 @@ class AnaliseViewModel extends BaseViewModel {
     super.dispose();
   }
 
-  /// Promove lotes vencidos (e registra a perda correspondente) antes de
-  /// recarregar — sem isso, os cards de Análise não refletem lotes que
-  /// venceram desde a última carga.
+  /// Promove lotes vencidos (e registra a perda correspondente)
   Future<void> _atualizarERecarregar() async {
     await _loteRepo.atualizarStatusVencidos();
     await carregar();
@@ -99,8 +98,8 @@ class AnaliseViewModel extends BaseViewModel {
   ResumoSaidas? _resumo;
   ResumoSaidas? get resumo => _resumo;
 
-  Map<String, int> _resumoPorMotivo = {};
-  Map<String, int> get resumoPorMotivo => Map.unmodifiable(_resumoPorMotivo);
+  Map<String, double> _resumoPorMotivo = {};
+  Map<String, double> get resumoPorMotivo => Map.unmodifiable(_resumoPorMotivo);
 
   List<LoteComProduto> _lotesEmAtencao = [];
   List<LoteComProduto> get lotesEmAtencao => List.unmodifiable(_lotesEmAtencao);
@@ -132,6 +131,7 @@ class AnaliseViewModel extends BaseViewModel {
           inicioAtual,
           agora,
           [
+            MotivoMovimentacao.vencimento,
             MotivoMovimentacao.avaria,
             MotivoMovimentacao.roubo,
             MotivoMovimentacao.outro,
@@ -139,7 +139,7 @@ class AnaliseViewModel extends BaseViewModel {
         );
 
         _resumo = ResumoSaidas(
-          quantidadeVendida: atual['qtd']!.toInt(),
+          quantidadeVendida: atual['qtd']!.toDouble(),
           faturamento: atual['faturamento']!.toDouble(),
           variacaoQuantidadePct: _variacaoPct(
             anterior['qtd']!.toDouble(),
