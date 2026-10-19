@@ -120,7 +120,7 @@ lib/
 
 ## Banco de dados
 
-O banco local usa **SQLite** via `sqflite` (versão 3 do esquema). Todo o esquema é criado em um único `onCreate`; não há migrações entre versões (veja [Limitações](#limitações-conhecidas)).
+O banco local usa **SQLite** via `sqflite`.
 
 ```mermaid
 erDiagram
