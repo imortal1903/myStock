@@ -221,13 +221,14 @@ O **myStock** está disponível para Android em três versões, compiladas para 
 
 ### Versões para Android
 
-| Arquitetura | Arquivo |
-|---|---|
-| ARM64-v8a (64 bits) | `app-arm64-v8a-release.apk` |
-| Armeabi-v7a (32 bits) | `app-armeabi-v7a-release.apk` |
-| x86_64 (64 bits) | `app-x86_64-release.apk` |
+| Arquitetura           | Arquivo                       | Ação                                                                                                               |
+|-----------------------|-------------------------------|--------------------------------------------------------------------------------------------------------------------|
+| ARM64-v8a (64 bits)   | `app-arm64-v8a-release.apk`   | <a href="https://github.com/imortal1903/myStock/releases/latest/download/app-arm64-v8a-release.apk">Baixar</a>     |
+| Armeabi-v7a (32 bits) | `app-armeabi-v7a-release.apk` | <a href="https://github.com/imortal1903/myStock/releases/latest/download/app-armeabi-v7a-release.apk">Baixar</a>   |
+| x86_64 (64 bits)      | `app-x86_64-release.apk`      | <a href="https://github.com/imortal1903/myStock/releases/latest/download/app-x86_64-release.apk">Baixar</a>        |
 
-**[Baixar myStock para Android — Releases]https://github.com/imortal1903/myStock/releases/latest**
+**[Baixar myStock para Android — Releases]
+https://github.com/imortal1903/myStock/releases/latest**
 
 ### Instalação
 
