@@ -122,65 +122,6 @@ lib/
 
 O banco local usa **SQLite** via `sqflite`.
 
-```mermaid
-erDiagram
-    CATEGORIAS ||--o{ PRODUTOS : classifica
-    PRODUTOS ||--o{ LOTES_PRODUTO : possui
-    LOTES_PRODUTO ||--o{ MOVIMENTACOES_ESTOQUE : registra
-    VENDAS ||--o{ VENDA_ITENS : contem
-    PRODUTOS ||--o{ VENDA_ITENS : vendido_em
-    LOTES_PRODUTO ||--o{ VENDA_ITENS : sai_de
-    PRODUTOS ||--o{ NOTIFICACOES : gera
-    LOTES_PRODUTO ||--o{ NOTIFICACOES : gera
-
-    PRODUTOS {
-        int id PK
-        string nome
-        string codigo_barras "unico"
-        int categoria_id FK
-        int estoque_min
-        int ativo "exclusao logica"
-        string unidade
-    }
-    LOTES_PRODUTO {
-        int id PK
-        int produto_id FK
-        string numero_lote
-        real quantidade
-        real quantidade_inicial
-        real preco_custo
-        real preco_venda
-        string data_validade
-        string status "ATIVO, VENCIDO, ESGOTADO, DESATIVADO"
-        int ativo "exclusao logica"
-    }
-    MOVIMENTACOES_ESTOQUE {
-        int id PK
-        int lote_id FK
-        string tipo "ENTRADA, SAIDA, AJUSTE, PERDA"
-        string motivo "VENDA, VENCIMENTO, AVARIA..."
-        real quantidade
-    }
-    VENDAS {
-        int id PK
-        real valor_total
-        string criado_em
-    }
-    VENDA_ITENS {
-        int id PK
-        int venda_id FK
-        int produto_id FK
-        int lote_id FK
-        real quantidade
-        real preco_unitario
-        real subtotal
-    }
-```
-
-Tabelas de apoio: `categorias`, `notificacoes` (tipos `VALIDADE_PROXIMA`, `PRODUTO_VENCIDO` e `ESTOQUE_BAIXO`) e `notification_config` (configuração dos alertas). As preferências de tema, de backup e do peso do lote recomendado ficam em `shared_preferences`.
-
----
-
 ## Como executar
 
 ### Pré-requisitos
@@ -271,6 +212,31 @@ As versões exatas estão no `pubspec.yaml`.
 - **Lucro com custo atual.** O custo no momento da venda não é guardado, então o lucro e o valor perdido usam o preço de custo atual do lote.
 - **Previsão sem sazonalidade.** A Média Móvel Simples não trata sazonalidade, que exigiria histórico de vários anos.
 - **Somente Android.** As notificações exatas e o backup em segundo plano foram configurados e testados apenas para Android.
+
+---
+
+## Downloads
+
+O **myStock** está disponível para Android em três versões, compiladas para diferentes arquiteturas de processadores. Acesse a página de releases para baixar o APK compatível com seu dispositivo.
+
+### Versões para Android
+
+| Arquitetura | Arquivo |
+|---|---|
+| ARM64-v8a (64 bits) | `app-arm64-v8a-release.apk` |
+| Armeabi-v7a (32 bits) | `app-armeabi-v7a-release.apk` |
+| x86_64 (64 bits) | `app-x86_64-release.apk` |
+
+**[Baixar myStock para Android — Releases]https://github.com/imortal1903/myStock/releases/latest**
+
+### Instalação
+
+1. Acesse a página de releases.
+2. Na seção **Assets**, baixe o APK correspondente à arquitetura do seu dispositivo.
+3. Abra o arquivo baixado no Android.
+4. Se solicitado, autorize a instalação de aplicativos dessa origem.
+
+> **Nota:** a instalação é feita diretamente pelo arquivo APK. A compatibilidade depende da arquitetura do dispositivo e da versão do Android.
 
 ---
 
